@@ -41,7 +41,7 @@ mpl.rcParams['axes.grid'] = False
 
 df = pd.read_csv(s.DATA_PATH, header=None, delimiter=r"\s+")
 df = df.rename(columns={0: "fast-fading (dB)"})
-df.plot(figsize=(10,8));
+# df.plot(figsize=(10,8));
 
 
 n = len(df)
@@ -134,4 +134,18 @@ gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt = fitGRU(window, train_min, train_max
 
 ## Plot and save (.txt) errors
 plot_errors(gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt, model_name='GRU')
+
+######################################################################################################    
+############################################# FIT CNN ################################################
+######################################################################################################
+
+cnn_models = cnn_histories = [] # keras.sequential models and keras.history objects
+cnn_mae = cnn_rmse = cnn_mae_rt = cnn_rmse_rt = {} # errors dicts
+
+# fit model and and output errors
+cnn_models, cnn_histories, \
+cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt = fitCNN(window, train_min, train_max)
+
+## Plot and save (.txt) errors
+plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, model_name='GRU')
 

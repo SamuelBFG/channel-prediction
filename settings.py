@@ -2,7 +2,7 @@ import argparse
 import os
 
 
-global SHOW_PLOTS, MODEL, CFG_L1, DATA_PATH, \
+global SHOW_PLOTS, CONV_WIDTH, CFG_L1, DATA_PATH, \
 CFG_L2, INPUT_WIDTH, OUT_STEPS, SHIFT, \
 MAX_EPOCHS, BATCHSIZE, DROPOUT, NORM, FIGURES_DIR
 
@@ -68,10 +68,13 @@ DATA_PATH = "pathAB_SSF_dB_AP1_downsampled2Khz_win100.txt"
 CFG_L1 = [50, 100, 200] # hidden units layer 1
 # CFG_L2 = [1, 5, 10, 25, 50, 100, 200, 500] # hidden units layer 2
 CFG_L2 = [] # declare this variable as an empty list for one-layer model
+CONV_WIDTH = 5
 # INPUT_WIDTH = 50
 # OUT_STEPS = 33
 SHIFT = OUT_STEPS
 MAX_EPOCHS = 50
+
+
 
 ## DON'T CHANGE
 BATCHSIZE = 32

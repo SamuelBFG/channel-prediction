@@ -6,6 +6,7 @@ import settings as s
 import pandas as pd
 import os
 import pdb
+from FeedBack import FeedBack
 
 def normalize_data(df, train_df, val_df, test_df, norm=s.NORM, show_plots=s.SHOW_PLOTS):
   train_mean = train_df.mean()
@@ -121,12 +122,12 @@ def min_max_inverse(data, train_min, train_max):
   return train_min[0] + (train_max[0] - train_min[0]) * (data + 1)/2
 
 def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", save_weights_only=False):
-  
+
   early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
                                                     patience=patience,
                                                     mode='min',
                                                     restore_best_weights=True)
-  
+
   reduceLrOnPlateau = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
                                                            patience=5,
                                                            verbose=1)
@@ -160,6 +161,9 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
 
   if model_name == '1DCNN':
     units = 'filters'
+  elif model_name == 'AR-LSTM':
+    CFG_L2 = []
+    units = 'units'
   elif model_name == 'LINEAR':
     units = ''
     CFG_L1 = [0]
@@ -409,6 +413,13 @@ def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG
                 'num kernels L1': [CFG_L1],
                 'num kernels L2': [CFG_L2],
                 'kernel size': [CONV_WIDTH],
+                'dropout': [DROPOUT],
+                'max_epochs': [MAX_EPOCHS]}
+
+  elif model_name == 'AR-LSTM':
+    df_params = {'input_width': [INPUT_WIDTH],
+                'output_steps': [OUT_STEPS],
+                'num kernels L1': [CFG_L1],
                 'dropout': [DROPOUT],
                 'max_epochs': [MAX_EPOCHS]}
 
@@ -788,6 +799,118 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
 
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
+def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+  
+  model_name = 'AR-LSTM'
+  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+
+  models = []
+  histories = []
+
+  val_mse_errors = []
+  val_rmse_errors = [] 
+  val_mae_errors = []
+  val_mse_errors_reversescaled = []
+  val_rmse_errors_reversescaled = [] 
+  val_mae_errors_reversescaled = []
+
+  test_mse_errors = []
+  test_rmse_errors = [] 
+  test_mae_errors = []
+  test_mse_errors_reversescaled = []
+  test_rmse_errors_reversescaled = [] 
+  test_mae_errors_reversescaled = []
+
+  # Storing the hyperparameters in a .txt file
+  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, 0, DROPOUT, MAX_EPOCHS)
+
+
+  for i in range(len(CFG_L1)):
+    print('##### {} MODEL WITH {} UNITS'.format(model_name, CFG_L1[i]))
+    model = FeedBack(units=CFG_L1[i], out_steps=OUT_STEPS)
+    models.append(model)
+    history = compile_and_fit(model, window, MAX_EPOCHS)
+    histories.append(history)
+
+    ## Calling get_errors function
+    val_performance, test_performance, \
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+
+    # Storing MSE, MAE, RMSE val/test performance
+    val_mse_errors.append(val_performance[0])
+    val_mae_errors.append(val_performance[1]) 
+    val_rmse_errors.append(val_performance[2])
+    test_mse_errors.append(test_performance[0])
+    test_mae_errors.append(test_performance[1]) 
+    test_rmse_errors.append(test_performance[2])
+
+    # Storing MSE, MAE, RMSE (reversescaled) val/test performance
+    val_mae_errors_reversescaled.append(val_performance_rt[1])
+    val_rmse_errors_reversescaled.append(val_performance_rt[2])
+    test_mae_errors_reversescaled.append(test_performance_rt[1])
+    test_rmse_errors_reversescaled.append(test_performance_rt[2])
+
+    
+    # # if show_plots:
+    # window.plot(model)
+    # if len(CFG_L2) > 0:
+    #   plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
+    #   plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    # else:
+    #   plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+    #   plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
+    # if show_plots:
+    #   plt.show()
+    window.plot(model)
+    plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+    plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
+    if show_plots:
+      plt.show()
+
+
+    model_loss_train = history.history['loss']
+    model_loss_val = history.history['val_loss']
+    model_epochs =  range(len(model_loss_train))
+
+    plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
+    plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
+
+
+    plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+
+    # if len(CFG_L2) > 0:
+    #   plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
+    #   plt.xlabel('Epochs')
+    #   plt.ylabel('Loss')
+    #   plt.legend()
+    #   plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    # else:
+    #   plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+    #   plt.xlabel('Epochs')
+    #   plt.ylabel('Loss')
+    #   plt.legend()
+    #   plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+
+    if show_plots:
+      plt.show()
+
+  mae = {'val':val_mae_errors,
+          'test':test_mae_errors}
+  
+  rmse = {'val':val_rmse_errors,
+          'test':test_rmse_errors}
+
+  mae_rt = {'val':val_mae_errors_reversescaled,
+            'test':test_mae_errors_reversescaled}
+
+  rmse_rt = {'val':val_rmse_errors_reversescaled,
+            'test':test_rmse_errors_reversescaled}
+
+  return models, histories, mae, rmse, mae_rt, rmse_rt
 
 def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
   

@@ -108,6 +108,20 @@ linear_mae, linear_rmse, linear_mae_rt, linear_rmse_rt = fitLinearRegression(win
 plot_errors(linear_mae, linear_rmse, linear_mae_rt, linear_rmse_rt, model_name='LINEAR')
 
 ######################################################################################################    
+############################################# FIT MLP ################################################
+######################################################################################################
+# variables
+dense_models = dense_histories = [] # keras.sequential models and keras.history objects
+dense_mae = dense_rmse = dense_mae_rt = dense_rmse_rt = {} # errors dicts
+
+# fit model and and output errors
+dense_models, dense_histories, \
+dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt = fitMLP(window, train_min, train_max)
+
+## Plot and save (.txt) errors
+plot_errors(dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt, model_name='MLP')
+
+######################################################################################################    
 ############################################# FIT LSTM ###############################################
 ######################################################################################################
 # variables
@@ -147,5 +161,5 @@ cnn_models, cnn_histories, \
 cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt = fitCNN(window, train_min, train_max)
 
 ## Plot and save (.txt) errors
-plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, model_name='GRU')
+plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, model_name='1DCNN')
 

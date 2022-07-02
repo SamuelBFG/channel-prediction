@@ -160,6 +160,10 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
 
   if model_name == '1DCNN':
     units = 'filters'
+  elif model_name == 'LINEAR':
+    units = ''
+    CFG_L1 = [0]
+    CFG_L2 = []
   else:
     units = 'units'
 
@@ -509,6 +513,137 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
   if show_plots:
     plt.show()
 
+
+  mae = {'val':val_mae_errors,
+          'test':test_mae_errors}
+  
+  rmse = {'val':val_rmse_errors,
+          'test':test_rmse_errors}
+
+  mae_rt = {'val':val_mae_errors_reversescaled,
+            'test':test_mae_errors_reversescaled}
+
+  rmse_rt = {'val':val_rmse_errors_reversescaled,
+            'test':test_rmse_errors_reversescaled}
+
+  return models, histories, mae, rmse, mae_rt, rmse_rt
+
+
+def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+  model_name = 'MLP'
+  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+
+  models = []
+  histories = []
+
+  val_mse_errors = []
+  val_rmse_errors = [] 
+  val_mae_errors = []
+  val_mse_errors_reversescaled = []
+  val_rmse_errors_reversescaled = [] 
+  val_mae_errors_reversescaled = []
+
+  test_mse_errors = []
+  test_rmse_errors = [] 
+  test_mae_errors = []
+  test_mse_errors_reversescaled = []
+  test_rmse_errors_reversescaled = [] 
+  test_mae_errors_reversescaled = []
+
+  # Storing the hyperparameters in a .txt file
+  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, DROPOUT, MAX_EPOCHS)
+
+  for i in range(len(CFG_L1)):
+    if len(CFG_L2) > 0:
+      print('##### {} MODEL WITH {} - {} UNITS'.format(model_name, CFG_L1[i], CFG_L2[i]))
+      model = tf.keras.Sequential([
+          # Shape [batch, time, features] => [batch, 1, features]
+          # Shape [batch, time, features] => [batch, dense_units]
+          # Adding more `dense_units` just overfits more quickly.
+          # tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
+          tf.keras.layers.Flatten(),
+          # Shape => [batch, 1, dense_units]
+          tf.keras.layers.Dense(CFG_L1[i], activation='relu'),
+          # Adding dropout to prent overfitting
+          tf.keras.layers.Dropout(DROPOUT),
+          # second dense layer
+          tf.keras.layers.Dense(CFG_L2[i], activation='relu'),
+          # Shape => [batch, out_steps*features]
+          # tf.keras.layers.Dense(OUT_STEPS*num_features),
+          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          # Shape => [batch, out_steps, features]
+          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+      ])
+    else:
+      print('##### {} MODEL WITH {} UNITS'.format(model_name, CFG_L1[i]))
+      model = tf.keras.Sequential([                         
+          # Shape [batch, time, features] => [batch, dense_units]
+          # Adding more `dense_units` just overfits more quickly.
+          tf.keras.layers.Flatten(),
+          # Shape => [batch, 1, dense_units]
+          tf.keras.layers.Dense(CFG_L1[i], activation='relu'),   
+          # Shape => [batch, out_steps*features]
+          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          # Shape => [batch, out_steps, features]
+          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+        ])
+
+    models.append(model)
+    history = compile_and_fit(model, window, MAX_EPOCHS)
+    histories.append(history)
+
+    ## Calling get_errors function
+    val_performance, test_performance, \
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+
+    # Storing MSE, MAE, RMSE val/test performance
+    val_mse_errors.append(val_performance[0])
+    val_mae_errors.append(val_performance[1]) 
+    val_rmse_errors.append(val_performance[2])
+    test_mse_errors.append(test_performance[0])
+    test_mae_errors.append(test_performance[1]) 
+    test_rmse_errors.append(test_performance[2])
+
+    # Storing MSE, MAE, RMSE (reversescaled) val/test performance
+    val_mae_errors_reversescaled.append(val_performance_rt[1])
+    val_rmse_errors_reversescaled.append(val_performance_rt[2])
+    test_mae_errors_reversescaled.append(test_performance_rt[1])
+    test_rmse_errors_reversescaled.append(test_performance_rt[2])
+
+    
+    # if show_plots:
+    window.plot(model)
+    if len(CFG_L2) > 0:
+      plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    else:
+      plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
+    if show_plots:
+      plt.show()
+
+    model_loss_train = history.history['loss']
+    model_loss_val = history.history['val_loss']
+    model_epochs =  range(len(model_loss_train))
+
+    plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
+    plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
+
+    if len(CFG_L2) > 0:
+      plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
+      plt.xlabel('Epochs')
+      plt.ylabel('Loss')
+      plt.legend()
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    else:
+      plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+      plt.xlabel('Epochs')
+      plt.ylabel('Loss')
+      plt.legend()
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+
+    if show_plots:
+      plt.show()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}

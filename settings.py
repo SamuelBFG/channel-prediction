@@ -26,22 +26,6 @@ args = parser.parse_args()
 # # when specifying zero vaules, the default will be set 
 # # A 'hard coded' varible will need set to set zero values
 
-# LSTM_SIZE_1
-# if args.lstm_size_1:
-#     print('Specified LSTM_SIZE_1:', args.lstm_size_1)
-#     LSTM_SIZE_1 = args.lstm_size_1
-# else:
-#     print('No specified LSTM_SIZE_1 - default: 50')
-#     LSTM_SIZE_1 = 50 #50,100,200
-
-# # LSTM_SIZE_2
-# if args.lstm_size_2:
-#     print('Specified LSTM_SIZE_2:', args.lstm_size_2)
-#     LSTM_SIZE_2 = args.lstm_size_2
-# else:
-#     print('No specified LSTM_SIZE_2 - default: 0')
-#     LSTM_SIZE_2 = 50 #50,100,200
-
 # INPUT_WIDTH
 if args.input_width:
     print('Specified INPUT_WIDTH:', args.input_width)
@@ -58,25 +42,17 @@ else:
     print('No specified OUT_STEPS - default: 15')
     OUT_STEPS = 4
 
+# INPUT_WIDTH = 50
+# OUT_STEPS = 33
 SHOW_PLOTS = True
-DATA_PATH = "pathAB_SSF_dB_AP1_downsampled2Khz_win100.txt"
-
-
-# TRAIN_STARTINDEX = 0
-# TEST_ENDINDEX = 18113
-# MODEL = 'LSTM'
-CFG_L1 = [1, 5, 10, 25, 50, 100, 200, 500] # hidden units layer 1
+DATA_PATH = "pathAB_SSF_dB_AP1_downsampled2Khz_win100.txt" # mmWave AP1
+# DATA_PATH = "fast_fading_dB_LOS_Head_Outdoor_downsampled100hz_n50.txt" # D2D for testing purposes
+CFG_L1 = [1,5,10,25,50,100,200,500] # hidden units layer 1
 # CFG_L2 = [1, 5, 10, 25, 50, 100, 200, 500] # hidden units layer 2
 CFG_L2 = [] # declare this variable as an empty list for one-layer model
 CONV_WIDTH = 5
-# INPUT_WIDTH = 50
-# OUT_STEPS = 33
 SHIFT = OUT_STEPS
-MAX_EPOCHS = 50
-
-
-
-## DON'T CHANGE
+MAX_EPOCHS = 100
 BATCHSIZE = 32
 DROPOUT = 0.3
 
@@ -90,3 +66,6 @@ NORM = 2
 FIGURES_DIR = '/home/nidhisimmons/git/channel_prediction_2022/mmwave/'#+str(MODEL)+'_input_'+str(INPUT_WIDTH)+'_output_'+str(OUT_STEPS)
 if not os.path.isdir(FIGURES_DIR):
   os.makedirs(FIGURES_DIR)
+
+
+

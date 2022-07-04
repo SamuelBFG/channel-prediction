@@ -9,6 +9,21 @@ import pdb
 from FeedBack import FeedBack
 
 def normalize_data(df, train_df, val_df, test_df, norm=s.NORM, show_plots=s.SHOW_PLOTS):
+  '''
+  Function to normalize the data.
+  Parameters:
+      df: a univariate time series data, a dataframe with shape (X, 1)
+      train_df: train part, a dataframe
+      val_df: validation part, a dataframe
+      test_df: test part, a dataframe
+      norm: Normalization kind (1 for standardization, \
+                                2 for centred mean and min = -1, \
+                                3 for minmax), a scalar integer in {0, 1, 2}
+      show_plots: True to show the plots, a boolean
+  Returns:
+      train, validation, and test part of the data normalized, three dataframes
+  '''
+
   train_mean = train_df.mean()
   train_std = train_df.std()
   train_min = train_df.min()
@@ -118,10 +133,31 @@ def normalize_data(df, train_df, val_df, test_df, norm=s.NORM, show_plots=s.SHOW
   return train_df, val_df, test_df
 
 def min_max_inverse(data, train_min, train_max):
+  '''
+  Function to return the inverse min-max normalization.
+  Parameters:
+      data: windowed data, a dataframe
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+  Returns:
+      inverse min-max normalization of data, a dataframe
+  '''
 
   return train_min[0] + (train_max[0] - train_min[0]) * (data + 1)/2
 
 def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", save_weights_only=False):
+  '''
+  Function to compile and fit the keras model.
+  Parameters:
+      model: a keras model
+      window: the sliding window, a WindowGenerator object
+      max_epochs: the maximum epochs the model will be trained on, a scalar
+      patience: number of epochs for patience for early stopping, a scalar
+      file_name: the file name for saving purposes, a string
+      save_weights_only: True to save only the weights inside file_name, a boolean
+  Returns:
+      keras.History object containing training/validation losses for each epoch
+  '''
 
   early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
                                                     patience=patience,
@@ -156,6 +192,22 @@ def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", 
 
 
 def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, show_plots=s.SHOW_PLOTS):
+  '''
+  Function for plotting and saving the MAE, RMSE, MAE (reversescaled), and RMSE (reversescaled) errors.
+  Parameters:
+      mae_dict: MAE error (val/test) for each trained model, a dictionary
+      rmse_dict: RMSE error (val/test) for each trained model, a dictionary
+      maeRT_dict: MAE (reversescaled) error (val/test) for each trained model, a dictionary
+      rmseRT_dict: RMSE (reversescaled) error (val/test) for each trained model, a dictionary
+      model_name: the model's name (e.g., LSTM, GRU), a string
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      show_plots: True to show the plots, a boolean
+  Returns:
+      MAE, RMSE, MAE_RT, RMSE_RT plots for each given model as well as .txt files
+  '''
 
   figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
 
@@ -195,13 +247,6 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   plt.bar(x - 0.17, rmse_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, rmse_dict['test'], width, label='Test')
 
-  # if len(CFG_L2) > 0:
-  #   plt.xticks(ticks=x, labels = ['{}-{} units'.format(x,y) for x,y in zip(CFG_L1, CFG_L2)],
-  #           rotation=40)
-  # else:
-  #   plt.xticks(ticks=x, labels = [str(x) + ' units' for x in CFG_L1],
-  #           rotation=45)
-
   if len(CFG_L2) > 0:
     plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(CFG_L1, CFG_L2)],
             rotation=40)
@@ -225,12 +270,7 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   else:
     plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in CFG_L1],
             rotation=45)
-  # if len(CFG_L2) > 0:
-  #   plt.xticks(ticks=x, labels = ['{}-{} units'.format(x,y) for x,y in zip(CFG_L1, CFG_L2)],
-  #           rotation=40)
-  # else:
-  #   plt.xticks(ticks=x, labels = [str(x) + ' units' for x in CFG_L1],
-  #           rotation=45)
+
   plt.ylabel(f'Mean Absolute Error (MAE) - REVERSESCALED')
   _ = plt.legend()
   plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
@@ -247,12 +287,7 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   else:
     plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in CFG_L1],
             rotation=45)
-  # if len(CFG_L2) > 0:
-  #   plt.xticks(ticks=x, labels = ['{}-{} units'.format(x,y) for x,y in zip(CFG_L1, CFG_L2)],
-  #           rotation=40)
-  # else:
-  #   plt.xticks(ticks=x, labels = [str(x) + ' units' for x in CFG_L1],
-  #           rotation=45)
+
   plt.ylabel(f'Root Mean Squared Error (RMSE) - REVERSESCALED')
   _ = plt.legend()
   plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
@@ -294,6 +329,18 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
       f.write(dfAsString)
 
 def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATCHSIZE):
+  '''
+  Function to get validation and test performance for a given model.
+  Parameters:
+      model: a keras Model
+      window: the window for which the model was trained on, a WindowGenerator object
+      model_name: the model's name (e.g., LSTM, GRU), a string
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      BATCHSIZE: batchsize, a scalar
+  Returns:
+      validation and test performance (scaled and reversescaled) for a given model, four dictionaries
+  '''
 
   val_performance = {}
   test_performance = {}
@@ -331,7 +378,7 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
     mae_val_reversescaled += np.mean(abs(diff_val_reversescaled))
     mse_val_reversescaled += np.mean(diff_val_reversescaled**2)
   
-  # pdb.set_trace()
+
   mae_val/=(len(window.val)-1)+(len(diff_val))/BATCHSIZE #(106+15/32)
   mse_val/=(len(window.val)-1)+(len(diff_val))/BATCHSIZE #(106+15/32)
   rmse_val = np.sqrt(mse_val)
@@ -393,7 +440,16 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
   return val_performance[model_name], test_performance[model_name], val_performance_rt, test_performance_rt
 
 def create_directory(model_name, INPUT_WIDTH, OUT_STEPS, figures_dir=s.FIGURES_DIR):
-
+  '''
+  Function to create a model subdirectory for saving purposes
+  Parameters:
+      model_name: the model's name (e.g., LSTM, GRU), a string
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      figures_dir: the main defined directory, a string
+  Returns:
+      a model subdirectory, a string
+  '''
   directory = figures_dir+str(model_name)+'_input_'+str(INPUT_WIDTH)+'_output_'+str(OUT_STEPS)
   if not os.path.isdir(directory):
     os.makedirs(directory)
@@ -401,7 +457,21 @@ def create_directory(model_name, INPUT_WIDTH, OUT_STEPS, figures_dir=s.FIGURES_D
   return directory
 
 def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, DROPOUT, MAX_EPOCHS, CONV_WIDTH=s.CONV_WIDTH):
-
+  '''
+  Function to save all the hyperparameters used in a training.
+  Parameters:
+      model_name: the model's name (e.g., LSTM, GRU), a string
+      figures_dir: the main defined directory, a string
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      DROPOUT: dropout rate, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      CONV_WIDTH: the kernel size for conv models, a scalar
+  Returns:
+      saved .txt file containing the hyperparameters
+  '''
   if model_name == 'LINEAR':
     df_params = {'input_width': [INPUT_WIDTH],
                 'output_steps': [OUT_STEPS],
@@ -443,7 +513,26 @@ def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG
   return
 
 def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
-  
+  '''
+  Function to define and fit the baseline Linear Regression model.
+  Parameters:
+      window: the window for which the model was trained on, a WindowGenerator object
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      show_plots: True to show the plots, a boolean
+  Returns:
+      saved figures regarding the window and the losses;
+      models: a keras.Model object
+      histories: a keras.History object
+      mae: mae val/test errors, a dictionary
+      rmse: rmse val/test errors, a dictionary
+      mae_rt: mae (reversescaled) val/test errors, a dictionary
+      rmse_rt: rmse (reversescaled) val/test errors, a dictionary
+
+  '''
   model_name = 'LINEAR'
   figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
 
@@ -541,6 +630,28 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
 
 
 def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+  '''
+  Function to define and fit a Multilayer Perceptron (MLP/DENSE/FFN) model.
+  Parameters:
+      window: the window for which the model was trained on, a WindowGenerator object
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      DROPOUT: dropout rate, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      show_plots: True to show the plots, a boolean
+  Returns:
+      saved figures regarding the window and the losses;
+      models: a list of keras.Model objects
+      histories: a list of keras.History objects
+      mae: mae val/test errors, a dictionary
+      rmse: rmse val/test errors, a dictionary
+      mae_rt: mae (reversescaled) val/test errors, a dictionary
+      rmse_rt: rmse (reversescaled) val/test errors, a dictionary
+  '''
   model_name = 'MLP'
   figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
 
@@ -672,7 +783,28 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
 
 
 def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
-  
+  '''
+  Function to define and fit a Long Short-term Memory (LSTM) model.
+  Parameters:
+      window: the window for which the model was trained on, a WindowGenerator object
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      DROPOUT: dropout rate, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      show_plots: True to show the plots, a boolean
+  Returns:
+      saved figures regarding the window and the losses;
+      models: a list of keras.Model objects
+      histories: a list of keras.History objects
+      mae: mae val/test errors, a dictionary
+      rmse: rmse val/test errors, a dictionary
+      mae_rt: mae (reversescaled) val/test errors, a dictionary
+      rmse_rt: rmse (reversescaled) val/test errors, a dictionary
+  '''
   model_name = 'LSTM'
   figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
 
@@ -800,7 +932,27 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
 def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
-  
+  '''
+  Function to define and fit an Autoregressive Long Short-term Memory (AR-LSTM) model.
+  Parameters:
+      window: the window for which the model was trained on, a WindowGenerator object
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      DROPOUT: dropout rate, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      show_plots: True to show the plots, a boolean
+  Returns:
+      saved figures regarding the window and the losses;
+      models: a list of keras.Model objects
+      histories: a list of keras.History objects
+      mae: mae val/test errors, a dictionary
+      rmse: rmse val/test errors, a dictionary
+      mae_rt: mae (reversescaled) val/test errors, a dictionary
+      rmse_rt: rmse (reversescaled) val/test errors, a dictionary
+  '''
   model_name = 'AR-LSTM'
   figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
 
@@ -850,23 +1002,11 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     test_mae_errors_reversescaled.append(test_performance_rt[1])
     test_rmse_errors_reversescaled.append(test_performance_rt[2])
 
-    
-    # # if show_plots:
-    # window.plot(model)
-    # if len(CFG_L2) > 0:
-    #   plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
-    #   plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
-    # else:
-    #   plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
-    #   plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
-    # if show_plots:
-    #   plt.show()
     window.plot(model)
     plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
     plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
     if show_plots:
       plt.show()
-
 
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
@@ -881,19 +1021,6 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     plt.ylabel('Loss')
     plt.legend()
     plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
-
-    # if len(CFG_L2) > 0:
-    #   plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
-    #   plt.xlabel('Epochs')
-    #   plt.ylabel('Loss')
-    #   plt.legend()
-    #   plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
-    # else:
-    #   plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
-    #   plt.xlabel('Epochs')
-    #   plt.ylabel('Loss')
-    #   plt.legend()
-    #   plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
 
     if show_plots:
       plt.show()
@@ -913,7 +1040,28 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
 def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
-  
+  '''
+  Function to define and fit a Gated Recurrent Unit (GRU) model.
+  Parameters:
+      window: the window for which the model was trained on, a WindowGenerator object
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      DROPOUT: dropout rate, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      show_plots: True to show the plots, a boolean
+  Returns:
+      saved figures regarding the window and the losses;
+      models: a list of keras.Model objects
+      histories: a list of keras.History objects
+      mae: mae val/test errors, a dictionary
+      rmse: rmse val/test errors, a dictionary
+      mae_rt: mae (reversescaled) val/test errors, a dictionary
+      rmse_rt: rmse (reversescaled) val/test errors, a dictionary
+  '''
   model_name = 'GRU'
   figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
   models = []
@@ -1042,7 +1190,29 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
 
 
 def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CONV_WIDTH=s.CONV_WIDTH, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
-  
+  '''
+  Function to define and fit a 1D Convolutional Neural Network (1DCNN) model.
+  Parameters:
+      window: the window for which the model was trained on, a WindowGenerator object
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CONV_WIDTH: kernel size, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      DROPOUT: dropout rate, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      show_plots: True to show the plots, a boolean
+  Returns:
+      saved figures regarding the window and the losses;
+      models: a list of keras.Model objects
+      histories: a list of keras.History objects
+      mae: mae val/test errors, a dictionary
+      rmse: rmse val/test errors, a dictionary
+      mae_rt: mae (reversescaled) val/test errors, a dictionary
+      rmse_rt: rmse (reversescaled) val/test errors, a dictionary
+  '''
   model_name = '1DCNN'
   figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
 

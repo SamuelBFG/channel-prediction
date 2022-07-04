@@ -2,6 +2,9 @@ import tensorflow as tf
 import pdb
 
 class FeedBack(tf.keras.Model):
+  '''
+  Class to implement autoregressive LSTM
+  '''
   def __init__(self, units, out_steps):
     super().__init__()
     self.out_steps = out_steps

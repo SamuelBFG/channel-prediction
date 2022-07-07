@@ -14,6 +14,7 @@ import warnings
 from tensorflow import keras
 from keras.callbacks import History
 from sklearn.preprocessing import MinMaxScaler
+import settings as s
 
 # ## For ARIMA
 # import statsmodels.api as sm
@@ -33,7 +34,6 @@ from sklearn.preprocessing import MinMaxScaler
 # from fbprophet import Prophet
 ## 
 
-BATCHSIZE = 32
 
 # %% [markdown]
 # ## Data windowing
@@ -67,7 +67,7 @@ BATCHSIZE = 32
 class WindowGenerator():
   def __init__(self, input_width, label_width, shift,
                train_df, val_df, test_df, train_min, train_max,
-               label_columns=None, inverse_function=None):
+               batch_size, label_columns=None, inverse_function=None):
     # Store the raw data.
     self.train_df = train_df
     self.val_df = val_df
@@ -75,7 +75,8 @@ class WindowGenerator():
     self.inverse_function=inverse_function
     self.train_min = train_min
     self.train_max = train_max
-
+    self.batch_size = batch_size
+    
     # Work out the label column indices.
     self.label_columns = label_columns
     if label_columns is not None:
@@ -195,7 +196,7 @@ def make_dataset(self, data):
       sequence_length=self.total_window_size,
       sequence_stride=1,
       shuffle=False,
-      batch_size=32,)
+      batch_size=self.batch_size,)
 
   ds = ds.map(self.split_window)
 

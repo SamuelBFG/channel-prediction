@@ -88,6 +88,7 @@ window = WindowGenerator(input_width=s.INPUT_WIDTH,
                                test_df=test_df,
                                train_min=train_min,
                                train_max=train_max,
+                               batch_size=s.BATCHSIZE,
                                inverse_function=min_max_inverse)
 
 if s.SHOW_PLOTS:
@@ -108,19 +109,19 @@ linear_mae, linear_rmse, linear_mae_rt, linear_rmse_rt = fitLinearRegression(win
 ## plot and save (.txt) errors
 plot_errors(linear_mae, linear_rmse, linear_mae_rt, linear_rmse_rt, model_name='LINEAR')
 
-######################################################################################################    
-############################################# FIT MLP ################################################
-######################################################################################################
+# ######################################################################################################    
+# ############################################# FIT MLP ################################################
+# ######################################################################################################
 
-dense_models = dense_histories = [] # keras.sequential models and keras.history objects
-dense_mae = dense_rmse = dense_mae_rt = dense_rmse_rt = {} # errors dicts
+# dense_models = dense_histories = [] # keras.sequential models and keras.history objects
+# dense_mae = dense_rmse = dense_mae_rt = dense_rmse_rt = {} # errors dicts
 
-# fit model and output errors
-dense_models, dense_histories, \
-dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt = fitMLP(window, train_min, train_max)
+# # fit model and output errors
+# dense_models, dense_histories, \
+# dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt = fitMLP(window, train_min, train_max)
 
-## plot and save (.txt) errors
-plot_errors(dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt, model_name='MLP')
+# ## plot and save (.txt) errors
+# plot_errors(dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt, model_name='MLP')
 
 ######################################################################################################    
 ############################################# FIT LSTM ###############################################
@@ -151,31 +152,31 @@ arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt = fitARLSTM(window, train
 plot_errors(arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt, model_name='AR-LSTM')
 
 
-######################################################################################################    
-############################################# FIT GRU ################################################
-######################################################################################################
+# ######################################################################################################    
+# ############################################# FIT GRU ################################################
+# ######################################################################################################
 
-gru_models = gru_histories = [] # keras.sequential models and keras.history objects
-gru_mae = gru_rmse = gru_mae_rt = gru_rmse_rt = {} # errors dicts
+# gru_models = gru_histories = [] # keras.sequential models and keras.history objects
+# gru_mae = gru_rmse = gru_mae_rt = gru_rmse_rt = {} # errors dicts
 
-# fit model and output errors
-gru_models, gru_histories, \
-gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt = fitGRU(window, train_min, train_max)
+# # fit model and output errors
+# gru_models, gru_histories, \
+# gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt = fitGRU(window, train_min, train_max)
 
-## plot and save (.txt) errors
-plot_errors(gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt, model_name='GRU')
+# ## plot and save (.txt) errors
+# plot_errors(gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt, model_name='GRU')
 
-######################################################################################################    
-############################################# FIT CNN ################################################
-######################################################################################################
+# ######################################################################################################    
+# ############################################# FIT CNN ################################################
+# ######################################################################################################
 
-cnn_models = cnn_histories = [] # keras.sequential models and keras.history objects
-cnn_mae = cnn_rmse = cnn_mae_rt = cnn_rmse_rt = {} # errors dicts
+# cnn_models = cnn_histories = [] # keras.sequential models and keras.history objects
+# cnn_mae = cnn_rmse = cnn_mae_rt = cnn_rmse_rt = {} # errors dicts
 
-# fit model and output errors
-cnn_models, cnn_histories, \
-cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt = fitCNN(window, train_min, train_max)
+# # fit model and output errors
+# cnn_models, cnn_histories, \
+# cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt = fitCNN(window, train_min, train_max)
 
-## plot and save (.txt) errors
-plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, model_name='1DCNN')
+# ## plot and save (.txt) errors
+# plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, model_name='1DCNN')
 

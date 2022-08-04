@@ -44,16 +44,16 @@ else:
 
 # INPUT_WIDTH = 50
 # OUT_STEPS = 33
-SHOW_PLOTS = True
-DATA_PATH = "pathBA_SSF_dB_AP4_downsampled2Khz_win100.txt" # mmWave AP4 - PATH: BA
-# DATA_PATH = "fast_fading_dB_LOS_Head_Outdoor_downsampled100hz_n50.txt" # D2D for testing purposes
+SHOW_PLOTS = False
+# DATA_PATH = "pathBA_SSF_dB_AP4_downsampled2Khz_win100.txt" # mmWave AP4 - PATH: BA
+DATA_PATH = "fast_fading_dB_NLOS_Head_Indoor_downsampled100hz_n50.txt" # D2D for testing purposes
 CFG_L1 = [50, 100, 200, 500] # hidden units layer 1
 # CFG_L2 = [1, 5, 10, 25, 50, 100, 200, 500] # hidden units layer 2
 CFG_L2 = [] # declare this variable as an empty list for one-layer model
 CONV_WIDTH = 5
 SHIFT = OUT_STEPS
 MAX_EPOCHS = 50
-BATCHSIZE = 1024
+BATCHSIZE = 32
 DROPOUT = 0.3
 
 # Types of normalization/scaling implemented here

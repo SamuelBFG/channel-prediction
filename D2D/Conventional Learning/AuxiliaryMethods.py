@@ -7,6 +7,7 @@ import pandas as pd
 import os
 import pdb
 from FeedBack import FeedBack
+from NBEATSBlock import *
 
 def normalize_data(df, train_df, val_df, test_df, norm=s.NORM, show_plots=s.SHOW_PLOTS):
   '''
@@ -172,13 +173,13 @@ def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", 
                 optimizer=tf.optimizers.Adam(),
                 metrics=[tf.metrics.MeanAbsoluteError(),
                          tf.metrics.RootMeanSquaredError()])
-
+  # pdb.set_trace()
   history = model.fit(window.train, epochs=max_epochs,
                       validation_data=window.val,
                       verbose = 0,
                       callbacks=[early_stopping, reduceLrOnPlateau])
   # print(history.history)  
-  
+  # pdb.set_trace()
   # if save_weights_only:
   #   model.save_weights(model_path)
   # else:
@@ -456,7 +457,8 @@ def create_directory(model_name, INPUT_WIDTH, OUT_STEPS, figures_dir=s.FIGURES_D
 
   return directory
 
-def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, DROPOUT, MAX_EPOCHS, CONV_WIDTH=s.CONV_WIDTH):
+def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, 
+  DROPOUT, MAX_EPOCHS, CONV_WIDTH=s.CONV_WIDTH, n_layers=0, n_blocks=0, b_sharing=False):
   '''
   Function to save all the hyperparameters used in a training.
   Parameters:
@@ -491,6 +493,15 @@ def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG
                 'output_steps': [OUT_STEPS],
                 'num kernels L1': [CFG_L1],
                 'dropout': [DROPOUT],
+                'max_epochs': [MAX_EPOCHS]}
+
+  elif model_name == 'N-BEATS':
+    df_params = {'input_width': [INPUT_WIDTH],
+                'output_steps': [OUT_STEPS],
+                'block layers': [n_layers],
+                'num blocks': [n_blocks],
+                'num hidden units': [CFG_L1],
+                'block sharing': [b_sharing],
                 'max_epochs': [MAX_EPOCHS]}
 
   else:
@@ -1356,4 +1367,132 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
 
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
+
+def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS,\
+   CONV_WIDTH=s.CONV_WIDTH, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS,\
+   CFG_L1=s.CFG_L1, n_blocks=3, n_layers=3, b_sharing=True):
+  '''
+  Function to define and fit a 1D Convolutional Neural Network (1DCNN) model.
+  Parameters:
+      window: the window for which the model was trained on, a WindowGenerator object
+      train_min: minimum value of the training set, a scalar
+      train_max: maximum value of the training set, a scalar
+      INPUT_WIDTH: window's input, a scalar
+      OUT_STEPS: window's output, a scalar
+      CONV_WIDTH: kernel size, a scalar
+      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      DROPOUT: dropout rate, a scalar
+      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      show_plots: True to show the plots, a boolean
+  Returns:
+      saved figures regarding the window and the losses;
+      models: a list of keras.Model objects
+      histories: a list of keras.History objects
+      mae: mae val/test errors, a dictionary
+      rmse: rmse val/test errors, a dictionary
+      mae_rt: mae (reversescaled) val/test errors, a dictionary
+      rmse_rt: rmse (reversescaled) val/test errors, a dictionary
+  '''
+  model_name = 'N-BEATS'
+  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+
+  models = []
+  histories = []
+
+  val_mse_errors = []
+  val_rmse_errors = [] 
+  val_mae_errors = []
+  val_mse_errors_reversescaled = []
+  val_rmse_errors_reversescaled = [] 
+  val_mae_errors_reversescaled = []
+
+  test_mse_errors = []
+  test_rmse_errors = [] 
+  test_mae_errors = []
+  test_mse_errors_reversescaled = []
+  test_rmse_errors_reversescaled = [] 
+  test_mae_errors_reversescaled = []
+                
+  # Storing the hyperparameters in a .txt file
+  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2=0, \
+    DROPOUT=0, MAX_EPOCHS=MAX_EPOCHS, CONV_WIDTH=0, n_layers=n_layers, n_blocks=n_blocks, b_sharing=b_sharing)
+
+  for i in range(len(CFG_L1)):
+    
+    # model = NBeatsModel(input_size=INPUT_WIDTH, output_size=OUT_STEPS, block_layers=n_layers, 
+    #   num_blocks=n_blocks, hidden_units=CFG_L1[0], block_sharing=b_sharing)
+    model = tf.keras.Sequential([
+    NBEATS(input_size=24, output_size=12, block_layers=3, num_blocks=3, hidden_units=512, block_sharing=True)
+    ])
+    
+    models.append(model)
+    history = compile_and_fit(model, window, MAX_EPOCHS)
+    histories.append(history)
+
+    ## Calling get_errors function
+    val_performance, test_performance, \
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+
+    # Storing MSE, MAE, RMSE val/test performance
+    val_mse_errors.append(val_performance[0])
+    val_mae_errors.append(val_performance[1]) 
+    val_rmse_errors.append(val_performance[2])
+    test_mse_errors.append(test_performance[0])
+    test_mae_errors.append(test_performance[1]) 
+    test_rmse_errors.append(test_performance[2])
+
+    # Storing MSE, MAE, RMSE (reversescaled) val/test performance
+    val_mae_errors_reversescaled.append(val_performance_rt[1])
+    val_rmse_errors_reversescaled.append(val_performance_rt[2])
+    test_mae_errors_reversescaled.append(test_performance_rt[1])
+    test_rmse_errors_reversescaled.append(test_performance_rt[2])
+
+    # if show_plots:
+    window.plot(model)
+    if len(CFG_L2) > 0:
+      plt.suptitle('Model: {} | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    else:
+      plt.suptitle('Model: {} | # Hidden Units: {} | # Layers: {} | # Blocks: {} | Block Sharing? {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], n_layers, n_blocks, b_sharing, INPUT_WIDTH, OUT_STEPS))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
+    if show_plots:
+      plt.show()
+
+    model_loss_train = history.history['loss']
+    model_loss_val = history.history['val_loss']
+    model_epochs =  range(len(model_loss_train))
+
+    plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
+    plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
+
+    if len(CFG_L2) > 0:
+      plt.title('{} Model Loss | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
+      plt.xlabel('Epochs')
+      plt.ylabel('Loss')
+      plt.legend()
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    else:
+      plt.title('{} Model Loss | # Hidden Units: {} | # Layers: {} | # Blocks: {} | Block Sharing? {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], n_layers, n_blocks, b_sharing, INPUT_WIDTH, OUT_STEPS))
+      plt.xlabel('Epochs')
+      plt.ylabel('Loss')
+      plt.legend()
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+
+    if show_plots:
+      plt.show()
+
+  mae = {'val':val_mae_errors,
+          'test':test_mae_errors}
+  
+  rmse = {'val':val_rmse_errors,
+          'test':test_rmse_errors}
+
+  mae_rt = {'val':val_mae_errors_reversescaled,
+            'test':test_mae_errors_reversescaled}
+
+  rmse_rt = {'val':val_rmse_errors_reversescaled,
+            'test':test_rmse_errors_reversescaled}
+
+  return models, histories, mae, rmse, mae_rt, rmse_rt
 

@@ -424,12 +424,12 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
     mae_test_reversescaled += np.mean(abs(diff_test_reversescaled))
     mse_test_reversescaled += np.mean(diff_test_reversescaled**2)
 
-  mae_test /= (len(window.test)-1)+(len(diff_test))/s.BATCHSIZE 
-  mse_test /= (len(window.test)-1)+(len(diff_test))/s.BATCHSIZE 
+  mae_test /= (len(window.test)-1)+(len(diff_test))/BATCHSIZE 
+  mse_test /= (len(window.test)-1)+(len(diff_test))/BATCHSIZE 
   rmse_test = np.sqrt(mse_test)
 
-  mae_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/s.BATCHSIZE 
-  mse_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/s.BATCHSIZE 
+  mae_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/BATCHSIZE 
+  mse_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/BATCHSIZE 
   rmse_test_reversescaled = np.sqrt(mse_test_reversescaled)
 
   test_performance_rt[1] = mae_test_reversescaled

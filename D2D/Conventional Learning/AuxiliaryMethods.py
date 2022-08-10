@@ -223,7 +223,7 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
     CFG_L2 = []
   else:
     units = 'units'
-
+  plt.figure()
   x = np.arange(len(rmse_dict['test']))
   width = 0.2
 
@@ -245,6 +245,8 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   if show_plots:
     plt.show()
 
+  plt.close()
+  plt.figure()
   plt.bar(x - 0.17, rmse_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, rmse_dict['test'], width, label='Test')
 
@@ -262,6 +264,8 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   if show_plots:
     plt.show()
 
+  plt.close()
+  plt.figure()
   plt.bar(x - 0.17, maeRT_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, maeRT_dict['test'], width, label='Test')
 
@@ -279,6 +283,8 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   if show_plots:
     plt.show()
 
+  plt.close()
+  plt.figure()
   plt.bar(x - 0.17, rmseRT_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, rmseRT_dict['test'], width, label='Test')
 
@@ -295,7 +301,7 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   plt.savefig(figures_dir+'/rmses_'+str(model_name)+'_RT')
   if show_plots:
     plt.show()
-
+  plt.close()
   dt = {'MAE': [x for x in mae_dict['test']],
         'RMSE': [x for x in rmse_dict['test']]}
 
@@ -369,7 +375,7 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
     #reverse transform the val_true and val_pred and then compute the metrics
     val_true = min_max_inverse(b[1], train_min, train_max) #val_true or val_labels
     val_pred = min_max_inverse(model.predict(b[0]), train_min, train_max)
-  
+    
     diff_val = b[1] - model.predict(b[0]) #val_labels (or val_true) - val_pred; scaled version
     diff_val_reversescaled = val_true - val_pred #val_labels (or val_true) - val_pred: reverse-scaled
 
@@ -611,6 +617,7 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
   model_loss_train = history.history['loss']
   model_loss_val = history.history['val_loss']
   model_epochs =  range(len(model_loss_train))
+  plt.close()
   plt.figure()
   plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
   plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
@@ -623,6 +630,7 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
 
   if show_plots:
     plt.show()
+  plt.close()
 
 
   mae = {'val':val_mae_errors,
@@ -758,6 +766,7 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
+    plt.close()
     plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
@@ -777,6 +786,7 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
 
     if show_plots:
       plt.show()
+    plt.close()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}
@@ -908,6 +918,7 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
+    plt.close()
     plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
@@ -927,6 +938,7 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
 
     if show_plots:
       plt.show()
+    plt.close()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}
@@ -1022,6 +1034,7 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
+    plt.close()
     plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
@@ -1035,6 +1048,7 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
 
     if show_plots:
       plt.show()
+    plt.close()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}
@@ -1164,6 +1178,7 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
+    plt.close()
     plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
@@ -1183,7 +1198,7 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
 
     if show_plots:
       plt.show()
-
+    plt.close()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}
@@ -1333,6 +1348,7 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
+    plt.close()
     plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
@@ -1352,6 +1368,7 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
 
     if show_plots:
       plt.show()
+    plt.close()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}
@@ -1370,7 +1387,7 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
 
 def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS,\
    CONV_WIDTH=s.CONV_WIDTH, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS,\
-   CFG_L1=s.CFG_L1, n_blocks=3, n_layers=3, b_sharing=True):
+   CFG_L1=s.CFG_L1, CFG_L2=[], n_blocks=3, n_layers=3, b_sharing=True):
   '''
   Function to define and fit a 1D Convolutional Neural Network (1DCNN) model.
   Parameters:
@@ -1419,12 +1436,12 @@ def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     DROPOUT=0, MAX_EPOCHS=MAX_EPOCHS, CONV_WIDTH=0, n_layers=n_layers, n_blocks=n_blocks, b_sharing=b_sharing)
 
   for i in range(len(CFG_L1)):
-    
-    # model = NBeatsModel(input_size=INPUT_WIDTH, output_size=OUT_STEPS, block_layers=n_layers, 
-    #   num_blocks=n_blocks, hidden_units=CFG_L1[0], block_sharing=b_sharing)
-    model = tf.keras.Sequential([
-    NBEATS(input_size=24, output_size=12, block_layers=3, num_blocks=3, hidden_units=512, block_sharing=True)
-    ])
+    print('##### {} MODEL WITH {} HIDDEN UNITS'.format(model_name, CFG_L1[i]))
+    model = tf.keras.Sequential()
+    model.add(tf.keras.Input(shape=(INPUT_WIDTH,)))
+    nbeats = NBEATS(input_size=INPUT_WIDTH, output_size=OUT_STEPS, block_layers=n_layers, num_blocks=n_blocks, hidden_units=CFG_L1[i], block_sharing=b_sharing)
+    model.add(nbeats)
+    model.add(tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()]))
     
     models.append(model)
     history = compile_and_fit(model, window, MAX_EPOCHS)
@@ -1462,6 +1479,7 @@ def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
+    plt.close()
     plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
@@ -1481,6 +1499,7 @@ def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
 
     if show_plots:
       plt.show()
+    plt.close()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}

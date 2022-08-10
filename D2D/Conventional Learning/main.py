@@ -38,19 +38,20 @@ mpl.rcParams['axes.grid'] = False
 ############################################## DATA LOAD #############################################
 ######################################################################################################
 
-df = pd.read_csv(s.DATA_PATH, header=None, delimiter=r"\s+").T
+# df = pd.read_csv(s.DATA_PATH, header=None, delimiter=r"\s+").T # for D2D
+df = pd.read_csv(s.DATA_PATH, header=None, delimiter=r"\s+") # for mm-wave
 df = df.rename(columns={0: "fast-fading (dB)"})
 
-# n = len(df)
-# train_df = df[0:int(n*0.7)]
-# val_df = df[int(n*0.7):int(n*0.9)]
-# test_df = df[int(n*0.9):]
-
 n = len(df)
-n2 = len(df[-s.OUT_STEPS-s.INPUT_WIDTH:])
 train_df = df[0:int(n*0.7)]
-val_df = df[int(n*0.7):int(n-n2)] 
-test_df = df[-n2:]  
+val_df = df[int(n*0.7):int(n*0.9)]
+test_df = df[int(n*0.9):]
+
+# n = len(df)
+# n2 = len(df[-s.OUT_STEPS-s.INPUT_WIDTH:])
+# train_df = df[0:int(n*0.7)]
+# val_df = df[int(n*0.7):int(n-n2)] 
+# test_df = df[-n2:]  
 
 train_mean = train_df.mean()
 train_std = train_df.std()
@@ -71,7 +72,7 @@ plt.savefig(s.FIGURES_DIR+'Dataset')
 
 if s.SHOW_PLOTS:
   plt.show()
-
+plt.close()
 
 ######################################################################################################    
 ######################################## DATA NORMALIZATION ##########################################
@@ -194,35 +195,46 @@ best_cnn_ind = np.argmin(cnn_mae['test'])
 ## plot and save (.txt) errors
 plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, model_name='1DCNN')
 
-# # ######################################################################################################    
-# # ########################################## FIT N-BEATS ###############################################
-# # ######################################################################################################
+# ######################################################################################################    
+# ########################################## FIT N-BEATS ###############################################
+# ######################################################################################################
 
-# nbeats_models = nbeats_histories = [] # keras.sequential models and keras.history objects
-# nbeats_mae = nbeats_rmse = nbeats_mae_rt = nbeats_rmse_rt = {} # errors dicts
+nbeats_models = nbeats_histories = [] # keras.sequential models and keras.history objects
+nbeats_mae = nbeats_rmse = nbeats_mae_rt = nbeats_rmse_rt = {} # errors dicts
 
-# # fit model and output errors
-# nbeats_models, nbeats_histories, \
-# nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt = fitNBEATS(window, train_min, train_max)
+# fit model and output errors
+nbeats_models, nbeats_histories, \
+nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt = fitNBEATS(window, train_min, train_max, n_blocks=3, n_layers=3, b_sharing=True)
 
-# ## plot and save (.txt) errors
-# plot_errors(nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt, model_name='N-BEATS')
+best_nbeats_ind = np.argmin(nbeats_mae['test'])
 
-# pdb.set_trace()
-result_linear = linear_models[0].predict(test_df[:-12].values.T)
-# pdb.set_trace()
-result_dense = dense_models[best_dense_ind].predict(test_df[:-12].values.T)
-result_lstm = lstm_models[best_lstm_ind].predict(test_df[:-12].values.T)
-# result_arlstm = arlstm_models[best_arlstm_ind].predict(test_df[:-12].values.T)
-result_gru = gru_models[best_gru_ind].predict(test_df[:-12].values.T)
-result_cnn = cnn_models[best_cnn_ind].predict(test_df[:-12].values.T)
+## plot and save (.txt) errors
+plot_errors(nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt, model_name='N-BEATS')
 
-plt.plot(result_linear[0].T, label='Linear')
-plt.plot(result_dense[0], label='MLP')
-plt.plot(result_lstm[0], label='LSTM')
-# plt.plot(result_arlstm[0], label='AR-LSTM')
-plt.plot(result_gru[0], label='GRU')
-plt.plot(result_cnn[0], label='CNN')
-plt.legend()
-plt.savefig(s.FIGURES_DIR+'Dataset')
-plt.show()
+
+# For H samples test:
+# samples = test_df[-12:].values.T
+# result_nbeats = nbeats_models[best_nbeats_ind].predict(samples)
+# result_linear = linear_models[0].predict(samples)
+# result_dense = dense_models[best_dense_ind].predict(samples)
+# result_lstm = lstm_models[best_lstm_ind].predict(samples)
+# # result_arlstm = arlstm_models[best_arlstm_ind].predict(samples)
+# result_gru = gru_models[best_gru_ind].predict(samples)
+# result_cnn = cnn_models[best_cnn_ind].predict(samples)
+
+# # pdb.set_trace()
+# plt.figure()
+# plt.title('Best Models Selected')
+# plt.plot(samples.T, label='Labels')
+# plt.plot(result_nbeats[0], label='N-BEATS')
+# plt.plot(result_linear[0], label='Linear')
+# plt.plot(result_dense[0], label='MLP')
+# plt.plot(result_lstm[0], label='LSTM')
+# # plt.plot(result_arlstm[0], label='AR-LSTM')
+# plt.plot(result_gru[0], label='GRU')
+# plt.plot(result_cnn[0], label='CNN')
+# plt.xlabel('Samples')
+# plt.ylabel('Small scale fading (dB) [norm]')
+# plt.legend()
+# plt.savefig(s.FIGURES_DIR+'TestResults')
+# plt.show()

@@ -611,7 +611,7 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
   model_loss_train = history.history['loss']
   model_loss_val = history.history['val_loss']
   model_epochs =  range(len(model_loss_train))
-
+  plt.figure()
   plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
   plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
@@ -758,7 +758,7 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
-
+    plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
@@ -908,7 +908,7 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
-
+    plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
@@ -1022,7 +1022,7 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
-
+    plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
@@ -1164,7 +1164,7 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
-
+    plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
@@ -1333,7 +1333,7 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
-
+    plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
@@ -1462,7 +1462,7 @@ def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     model_loss_train = history.history['loss']
     model_loss_val = history.history['val_loss']
     model_epochs =  range(len(model_loss_train))
-
+    plt.figure()
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 

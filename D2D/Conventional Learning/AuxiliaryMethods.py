@@ -155,7 +155,7 @@ def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", 
       max_epochs: the maximum epochs the model will be trained on, a scalar
       patience: number of epochs for patience for early stopping, a scalar
       file_name: the file name for saving purposes, a string
-      save_weights_only: True to save only the weights inside file_name, a boolean
+      save_weights_only: Truetf.keras.backend.clear_session() to save only the weights inside file_name, a boolean
   Returns:
       keras.History object containing training/validation losses for each epoch
   '''
@@ -1385,9 +1385,10 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
 
-def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS,\
+def fitNBEATS(window, train_min, train_max, n_blocks, n_layers, b_sharing,\
+  INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS,\
    CONV_WIDTH=s.CONV_WIDTH, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS,\
-   CFG_L1=s.CFG_L1, CFG_L2=[], n_blocks=3, n_layers=3, b_sharing=True):
+   CFG_L1=s.CFG_L1, CFG_L2=[]):
   '''
   Function to define and fit a 1D Convolutional Neural Network (1DCNN) model.
   Parameters:
@@ -1500,6 +1501,8 @@ def fitNBEATS(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     if show_plots:
       plt.show()
     plt.close()
+
+    # tf.keras.backend.clear_session()
 
   mae = {'val':val_mae_errors,
           'test':test_mae_errors}

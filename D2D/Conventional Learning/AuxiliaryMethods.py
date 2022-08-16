@@ -8,8 +8,9 @@ import os
 import pdb
 from FeedBack import FeedBack
 from NBEATSBlock import *
+import argparse
 
-def normalize_data(df, train_df, val_df, test_df, norm=s.NORM, show_plots=s.SHOW_PLOTS):
+def normalize_data(df, train_df, val_df, test_df, norm, show_plots):
   '''
   Function to normalize the data.
   Parameters:
@@ -17,9 +18,9 @@ def normalize_data(df, train_df, val_df, test_df, norm=s.NORM, show_plots=s.SHOW
       train_df: train part, a dataframe
       val_df: validation part, a dataframe
       test_df: test part, a dataframe
-      norm: Normalization kind (1 for standardization, \
-                                2 for centred mean and min = -1, \
-                                3 for minmax), a scalar integer in {0, 1, 2}
+      norm: Normalization kind (0 for standardization, \
+                                1 for centred mean and min = -1, \
+                                2 for minmax), an integer in {0, 1, 2}
       show_plots: True to show the plots, a boolean
   Returns:
       train, validation, and test part of the data normalized, three dataframes
@@ -192,7 +193,7 @@ def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", 
   return history
 
 
-def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, show_plots=s.SHOW_PLOTS):
+def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, input_width, out_steps, num_units_l1, num_units_l2, figures_dir, show_plots, model_name):
   '''
   Function for plotting and saving the MAE, RMSE, MAE (reversescaled), and RMSE (reversescaled) errors.
   Parameters:
@@ -200,27 +201,29 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
       rmse_dict: RMSE error (val/test) for each trained model, a dictionary
       maeRT_dict: MAE (reversescaled) error (val/test) for each trained model, a dictionary
       rmseRT_dict: RMSE (reversescaled) error (val/test) for each trained model, a dictionary
-      model_name: the model's name (e.g., LSTM, GRU), a string
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      num_units_l2: configs (e.g., hidden units, filters) for model's layer 2, a list
       show_plots: True to show the plots, a boolean
+      model_name: the model's name (e.g., LSTM, GRU), a string
   Returns:
       MAE, RMSE, MAE_RT, RMSE_RT plots for each given model as well as .txt files
   '''
-
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, input_width, out_steps, figures_dir)
 
   if model_name == '1DCNN':
     units = 'filters'
   elif model_name == 'AR-LSTM':
-    CFG_L2 = []
+    num_units_l2 = []
     units = 'units'
   elif model_name == 'LINEAR':
     units = ''
-    CFG_L1 = [0]
-    CFG_L2 = []
+    num_units_l1 = [0]
+    num_units_l2 = []
+  elif model_name == 'N-BEATS':
+    units = 'units'
+    num_units_l2 = []
   else:
     units = 'units'
   plt.figure()
@@ -230,16 +233,16 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   plt.bar(x - 0.17, mae_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, mae_dict['test'], width, label='Test')
 
-  if len(CFG_L2) > 0:
-    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(CFG_L1, CFG_L2)],
+  if len(num_units_l2) > 0:
+    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(num_units_l1, num_units_l2)],
             rotation=40)
   else:
-    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in CFG_L1],
+    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in num_units_l1],
             rotation=45)
 
   plt.ylabel(f'Mean Absolute Error (MAE)')
   _ = plt.legend()
-  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
+  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, input_width, out_steps))
   plt.savefig(figures_dir+'/maes_'+str(model_name))
 
   if show_plots:
@@ -250,16 +253,16 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   plt.bar(x - 0.17, rmse_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, rmse_dict['test'], width, label='Test')
 
-  if len(CFG_L2) > 0:
-    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(CFG_L1, CFG_L2)],
+  if len(num_units_l2) > 0:
+    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(num_units_l1, num_units_l2)],
             rotation=40)
   else:
-    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in CFG_L1],
+    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in num_units_l1],
             rotation=45)
 
   plt.ylabel(f'Root Mean Square Error (RMSE)')
   _ = plt.legend()
-  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
+  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, input_width, out_steps))
   plt.savefig(figures_dir+'/rmses_'+str(model_name))
   if show_plots:
     plt.show()
@@ -269,16 +272,16 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   plt.bar(x - 0.17, maeRT_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, maeRT_dict['test'], width, label='Test')
 
-  if len(CFG_L2) > 0:
-    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(CFG_L1, CFG_L2)],
+  if len(num_units_l2) > 0:
+    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(num_units_l1, num_units_l2)],
             rotation=40)
   else:
-    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in CFG_L1],
+    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in num_units_l1],
             rotation=45)
 
   plt.ylabel(f'Mean Absolute Error (MAE) - REVERSESCALED')
   _ = plt.legend()
-  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
+  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, input_width, out_steps))
   plt.savefig(figures_dir+'/maes_'+str(model_name)+'_RT')
   if show_plots:
     plt.show()
@@ -288,16 +291,16 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   plt.bar(x - 0.17, rmseRT_dict['val'], width, label='Validation')
   plt.bar(x + 0.17, rmseRT_dict['test'], width, label='Test')
 
-  if len(CFG_L2) > 0:
-    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(CFG_L1, CFG_L2)],
+  if len(num_units_l2) > 0:
+    plt.xticks(ticks=x, labels = ['{x}-{y} '+str(units) for x,y in zip(num_units_l1, num_units_l2)],
             rotation=40)
   else:
-    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in CFG_L1],
+    plt.xticks(ticks=x, labels = [str(x)+' '+str(units) for x in num_units_l1],
             rotation=45)
 
   plt.ylabel(f'Root Mean Squared Error (RMSE) - REVERSESCALED')
   _ = plt.legend()
-  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
+  plt.title('{} - Hyperparameters Search - Input: {} | Outuput: {}'.format(model_name, input_width, out_steps))
   plt.savefig(figures_dir+'/rmses_'+str(model_name)+'_RT')
   if show_plots:
     plt.show()
@@ -305,10 +308,10 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
   dt = {'MAE': [x for x in mae_dict['test']],
         'RMSE': [x for x in rmse_dict['test']]}
 
-  if len(CFG_L2) > 0:
-    df = pd.DataFrame(dt, index=['{x}-{y} '+str(units) for x,y in zip(CFG_L1, CFG_L2)])
+  if len(num_units_l2) > 0:
+    df = pd.DataFrame(dt, index=['{x}-{y} '+str(units) for x,y in zip(num_units_l1, num_units_l2)])
   else:
-    df = pd.DataFrame(dt, index=[str(x)+' '+str(units) for x in CFG_L1])
+    df = pd.DataFrame(dt, index=[str(x)+' '+str(units) for x in num_units_l1])
 
   print('{} - Errors Comparison'.format(model_name))
   print(df)
@@ -322,10 +325,10 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
         'RMSE': [x for x in rmseRT_dict['test']]}
 
   # df = pd.DataFrame(dt, index=[str(x) + ' units' for x in config])
-  if len(CFG_L2) > 0:
-    df = pd.DataFrame(dt, index=['{x}-{y} '+str(units) for x,y in zip(CFG_L1, CFG_L2)])
+  if len(num_units_l2) > 0:
+    df = pd.DataFrame(dt, index=['{x}-{y} '+str(units) for x,y in zip(num_units_l1, num_units_l2)])
   else:
-    df = pd.DataFrame(dt, index=[str(x)+' '+str(units) for x in CFG_L1])
+    df = pd.DataFrame(dt, index=[str(x)+' '+str(units) for x in num_units_l1])
 
   print('{} - Errors Comparison - REVERSESCALED'.format(model_name))
   print(df)
@@ -335,7 +338,7 @@ def plot_errors(mae_dict, rmse_dict, maeRT_dict, rmseRT_dict, model_name, INPUT_
       dfAsString = df.to_string(header=True, index=True)
       f.write(dfAsString)
 
-def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATCHSIZE):
+def get_errors(model, window, model_name, train_min, train_max, batchsize):
   '''
   Function to get validation and test performance for a given model.
   Parameters:
@@ -344,7 +347,7 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
       model_name: the model's name (e.g., LSTM, GRU), a string
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      BATCHSIZE: batchsize, a scalar
+      batchsize: batchsize, a scalar
   Returns:
       validation and test performance (scaled and reversescaled) for a given model, four dictionaries
   '''
@@ -374,9 +377,9 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
 
     #reverse transform the val_true and val_pred and then compute the metrics
     val_true = min_max_inverse(b[1], train_min, train_max) #val_true or val_labels
-    val_pred = min_max_inverse(model.predict(b[0]), train_min, train_max)
+    val_pred = min_max_inverse(model.predict(b[0], verbose=0), train_min, train_max)
     
-    diff_val = b[1] - model.predict(b[0]) #val_labels (or val_true) - val_pred; scaled version
+    diff_val = b[1] - model.predict(b[0], verbose=0) #val_labels (or val_true) - val_pred; scaled version
     diff_val_reversescaled = val_true - val_pred #val_labels (or val_true) - val_pred: reverse-scaled
 
     mae_val += np.mean(abs(diff_val))
@@ -386,18 +389,18 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
     mse_val_reversescaled += np.mean(diff_val_reversescaled**2)
   
 
-  mae_val/=(len(window.val)-1)+(len(diff_val))/BATCHSIZE #(106+15/32)
-  mse_val/=(len(window.val)-1)+(len(diff_val))/BATCHSIZE #(106+15/32)
+  mae_val/=(len(window.val)-1)+(len(diff_val))/batchsize #(106+15/32)
+  mse_val/=(len(window.val)-1)+(len(diff_val))/batchsize #(106+15/32)
   rmse_val = np.sqrt(mse_val)
 
-  mae_val_reversescaled/=(len(window.val)-1)+(len(diff_val_reversescaled))/BATCHSIZE #(106+15/32)
-  mse_val_reversescaled/=(len(window.val)-1)+(len(diff_val_reversescaled))/BATCHSIZE #(106+15/32)
+  mae_val_reversescaled/=(len(window.val)-1)+(len(diff_val_reversescaled))/batchsize #(106+15/32)
+  mse_val_reversescaled/=(len(window.val)-1)+(len(diff_val_reversescaled))/batchsize #(106+15/32)
   rmse_val_reversescaled = np.sqrt(mse_val_reversescaled)
 
   val_performance_rt[1] = mae_val_reversescaled
   val_performance_rt[2] = rmse_val_reversescaled
 
-  val_performance[model_name] = model.evaluate(window.val)
+  val_performance[model_name] = model.evaluate(window.val, verbose=0)
 
   #test dataset
   mae_test = 0
@@ -419,9 +422,9 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
 
     #reverse transform test_true and test_pred and then compute the metrics
     test_true = min_max_inverse(c[1], train_min, train_max) #test_labels
-    test_pred = min_max_inverse(model.predict(c[0]), train_min, train_max)
+    test_pred = min_max_inverse(model.predict(c[0], verbose=0), train_min, train_max)
   
-    diff_test = c[1] - model.predict(c[0]) # test_labels (or test_true) - test_pred
+    diff_test = c[1] - model.predict(c[0], verbose=0) # test_labels (or test_true) - test_pred
     diff_test_reversescaled = test_true - test_pred #test_labels (or test_true) - test_pred: reverse-scaled
 
     mae_test += np.mean(abs(diff_test))
@@ -430,12 +433,12 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
     mae_test_reversescaled += np.mean(abs(diff_test_reversescaled))
     mse_test_reversescaled += np.mean(diff_test_reversescaled**2)
 
-  mae_test /= (len(window.test)-1)+(len(diff_test))/BATCHSIZE 
-  mse_test /= (len(window.test)-1)+(len(diff_test))/BATCHSIZE 
+  mae_test /= (len(window.test)-1)+(len(diff_test))/batchsize 
+  mse_test /= (len(window.test)-1)+(len(diff_test))/batchsize 
   rmse_test = np.sqrt(mse_test)
 
-  mae_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/BATCHSIZE 
-  mse_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/BATCHSIZE 
+  mae_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/batchsize 
+  mse_test_reversescaled/=(len(window.test)-1)+(len(diff_test_reversescaled))/batchsize 
   rmse_test_reversescaled = np.sqrt(mse_test_reversescaled)
 
   test_performance_rt[1] = mae_test_reversescaled
@@ -446,77 +449,81 @@ def get_errors(model, window, model_name, train_min, train_max, BATCHSIZE=s.BATC
 
   return val_performance[model_name], test_performance[model_name], val_performance_rt, test_performance_rt
 
-def create_directory(model_name, INPUT_WIDTH, OUT_STEPS, figures_dir=s.FIGURES_DIR):
+def create_directory(model_name, input_width, out_steps, figures_dir):
   '''
   Function to create a model subdirectory for saving purposes
   Parameters:
       model_name: the model's name (e.g., LSTM, GRU), a string
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
       figures_dir: the main defined directory, a string
   Returns:
       a model subdirectory, a string
   '''
-  directory = figures_dir+str(model_name)+'_input_'+str(INPUT_WIDTH)+'_output_'+str(OUT_STEPS)
+  directory = figures_dir+str(model_name)+'_input_'+str(input_width)+'_output_'+str(out_steps)
   if not os.path.isdir(directory):
     os.makedirs(directory)
 
   return directory
 
-def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, 
-  DROPOUT, MAX_EPOCHS, CONV_WIDTH=s.CONV_WIDTH, n_layers=0, n_blocks=0, b_sharing=False):
+def save_parameters(model_name, figures_dir, input_width, out_steps, batchsize, num_units_l1, num_units_l2, 
+  dropout_rate, max_epochs, conv_width=0, n_layers=0, n_blocks=0, b_sharing=False):
   '''
   Function to save all the hyperparameters used in a training.
   Parameters:
       model_name: the model's name (e.g., LSTM, GRU), a string
       figures_dir: the main defined directory, a string
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
-      DROPOUT: dropout rate, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
-      CONV_WIDTH: the kernel size for conv models, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      num_units_l2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      dropout_rate: dropout rate, a scalar
+      max_epochs: maximum epochs used to train the model, a scalar
+      conv_width: the kernel size for conv models, a scalar
   Returns:
       saved .txt file containing the hyperparameters
   '''
   if model_name == 'LINEAR':
-    df_params = {'input_width': [INPUT_WIDTH],
-                'output_steps': [OUT_STEPS],
-                'max_epochs': [MAX_EPOCHS]}
+    df_params = {'input_width': [input_width],
+                'output_steps': [out_steps],
+                'batch size': [batchsize],
+                'max_epochs': [max_epochs]}
 
   elif model_name == '1DCNN':
-    df_params = {'input_width': [INPUT_WIDTH],
-                'output_steps': [OUT_STEPS],
-                'num kernels L1': [CFG_L1],
-                'num kernels L2': [CFG_L2],
-                'kernel size': [CONV_WIDTH],
-                'dropout': [DROPOUT],
-                'max_epochs': [MAX_EPOCHS]}
+    df_params = {'input_width': [input_width],
+                'output_steps': [out_steps],
+                'num kernels L1': [num_units_l1],
+                'num kernels L2': [num_units_l2],
+                'kernel size': [conv_width],
+                'dropout': [dropout_rate],
+                'batch size': [batchsize],
+                'max_epochs': [max_epochs]}
 
   elif model_name == 'AR-LSTM':
-    df_params = {'input_width': [INPUT_WIDTH],
-                'output_steps': [OUT_STEPS],
-                'num kernels L1': [CFG_L1],
-                'dropout': [DROPOUT],
-                'max_epochs': [MAX_EPOCHS]}
+    df_params = {'input_width': [input_width],
+                'output_steps': [out_steps],
+                'num kernels L1': [num_units_l1],
+                'batch size': [batchsize],
+                'max_epochs': [max_epochs]}
 
   elif model_name == 'N-BEATS':
-    df_params = {'input_width': [INPUT_WIDTH],
-                'output_steps': [OUT_STEPS],
+    df_params = {'input_width': [input_width],
+                'output_steps': [out_steps],
                 'block layers': [n_layers],
                 'num blocks': [n_blocks],
-                'num hidden units': [CFG_L1],
+                'num hidden units': [num_units_l1],
                 'block sharing': [b_sharing],
-                'max_epochs': [MAX_EPOCHS]}
+                'batch size': [batchsize],
+                'max_epochs': [max_epochs]}
 
   else:
-    df_params = {'input_width': [INPUT_WIDTH],
-                'output_steps': [OUT_STEPS],
-                'num hidden units L1': [CFG_L1],
-                'num hidden units L2': [CFG_L2],
-                'dropout': [DROPOUT],
-                'max_epochs': [MAX_EPOCHS]}
+    df_params = {'input_width': [input_width],
+                'output_steps': [out_steps],
+                'num hidden units L1': [num_units_l1],
+                'num hidden units L2': [num_units_l2],
+                'dropout': [dropout_rate],
+                'batch size': [batchsize],
+                'max_epochs': [max_epochs]}
 
   df_params = pd.DataFrame(df_params)
   print('{} - Hyperparameters'.format(model_name))
@@ -529,17 +536,18 @@ def save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG
 
   return
 
-def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+def fitLinearRegression(args, window, train_min, train_max):
   '''
   Function to define and fit the baseline Linear Regression model.
   Parameters:
       window: the window for which the model was trained on, a WindowGenerator object
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      max_epochs: maximum epochs used to train the model, a scalar
       show_plots: True to show the plots, a boolean
+      batchsize: number of samples in each mini batch, a integer
   Returns:
       saved figures regarding the window and the losses;
       models: a keras.Model object
@@ -551,7 +559,7 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
 
   '''
   model_name = 'LINEAR'
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, args.input_width, args.out_steps, args.path_for_common_dir)
 
   models = []
   histories = []
@@ -571,7 +579,7 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
   test_mae_errors_reversescaled = []
 
   # Storing the hyperparameters in a .txt file
-  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, 0, 0, 0, MAX_EPOCHS)
+  save_parameters(model_name, figures_dir, args.input_width, args.out_steps, args.mb_size, 0, 0, 0, args.max_epochs)
 
   print('##### {} MODEL'.format(model_name))
 
@@ -579,19 +587,19 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
       # Shape: (time, features) => (time*features)
       tf.keras.layers.Flatten(),
       # Shape => [batch, time*features, out_steps*features]
-      tf.keras.layers.Dense(OUT_STEPS*window.get_num_features(),
+      tf.keras.layers.Dense(args.out_steps*window.get_num_features(),
                           kernel_initializer=tf.initializers.zeros()),
       # Shape => [batch, out_steps, features]
-      tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+      tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
   ])
 
   models.append(model)
-  history = compile_and_fit(model, window, MAX_EPOCHS)
+  history = compile_and_fit(model, window, args.max_epochs)
   histories.append(history)
 
   ## Calling get_errors function
   val_performance, test_performance, \
-  val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+  val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max, args.mb_size)
 
   # Storing MSE, MAE, RMSE val/test performance
   val_mse_errors.append(val_performance[0])
@@ -609,9 +617,9 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
 
   # if show_plots:
   window.plot(model)
-  plt.suptitle('Model: {} | Input: {} | Output: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
+  plt.suptitle('Model: {} | Input: {} | Output: {}'.format(model_name, args.input_width, args.out_steps))
   plt.savefig(figures_dir+'/window_'+str(model_name))
-  if show_plots:
+  if args.if_show_plots:
     plt.show()
 
   model_loss_train = history.history['loss']
@@ -622,13 +630,13 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
   plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
   plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
-  plt.title('{} Model Loss | Input: {} | Output: {}'.format(model_name, INPUT_WIDTH, OUT_STEPS))
+  plt.title('{} Model Loss | Input: {} | Output: {}'.format(model_name, args.input_width, args.out_steps))
   plt.xlabel('Epochs')
   plt.ylabel('Loss')
   plt.legend()
   plt.savefig(figures_dir+"/losses_"+str(model_name))
 
-  if show_plots:
+  if args.if_show_plots:
     plt.show()
   plt.close()
 
@@ -648,20 +656,21 @@ def fitLinearRegression(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH,
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
 
-def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+def fitMLP(args, window, train_min, train_max):
   '''
   Function to define and fit a Multilayer Perceptron (MLP/DENSE/FFN) model.
   Parameters:
       window: the window for which the model was trained on, a WindowGenerator object
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
-      DROPOUT: dropout rate, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      num_units_l2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      dropout_rate: dropout rate, a scalar
+      max_epochs: maximum epochs used to train the model, a scalar
       show_plots: True to show the plots, a boolean
+      batchsize: number of samples in each mini batch, a integer
   Returns:
       saved figures regarding the window and the losses;
       models: a list of keras.Model objects
@@ -672,7 +681,7 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
       rmse_rt: rmse (reversescaled) val/test errors, a dictionary
   '''
   model_name = 'MLP'
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, args.input_width, args.out_steps, args.path_for_common_dir)
 
   models = []
   histories = []
@@ -692,11 +701,11 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
   test_mae_errors_reversescaled = []
 
   # Storing the hyperparameters in a .txt file
-  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, DROPOUT, MAX_EPOCHS)
+  save_parameters(model_name, figures_dir, args.input_width, args.out_steps, args.mb_size, args.num_units_l1, args.num_units_l2, args.dropout_rate, args.max_epochs)
 
-  for i in range(len(CFG_L1)):
-    if len(CFG_L2) > 0:
-      print('##### {} MODEL WITH {} - {} UNITS'.format(model_name, CFG_L1[i], CFG_L2[i]))
+  for i in range(len(args.num_units_l1)):
+    if len(args.num_units_l2) > 0:
+      print('##### {} MODEL WITH {} - {} UNITS'.format(model_name, args.num_units_l1[i], args.num_units_l2[i]))
       model = tf.keras.Sequential([
           # Shape [batch, time, features] => [batch, 1, features]
           # Shape [batch, time, features] => [batch, dense_units]
@@ -704,38 +713,38 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
           # tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
           tf.keras.layers.Flatten(),
           # Shape => [batch, 1, dense_units]
-          tf.keras.layers.Dense(CFG_L1[i], activation='relu'),
+          tf.keras.layers.Dense(args.num_units_l1[i], activation='relu'),
           # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # second dense layer
-          tf.keras.layers.Dense(CFG_L2[i], activation='relu'),
+          tf.keras.layers.Dense(args.num_units_l2[i], activation='relu'),
           # Shape => [batch, out_steps*features]
-          # tf.keras.layers.Dense(OUT_STEPS*num_features),
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          # tf.keras.layers.Dense(out_steps*num_features),
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
           # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
       ])
     else:
-      print('##### {} MODEL WITH {} UNITS'.format(model_name, CFG_L1[i]))
+      print('##### {} MODEL WITH {} UNITS'.format(model_name, args.num_units_l1[i]))
       model = tf.keras.Sequential([                         
           # Shape [batch, time, features] => [batch, dense_units]
           # Adding more `dense_units` just overfits more quickly.
           tf.keras.layers.Flatten(),
           # Shape => [batch, 1, dense_units]
-          tf.keras.layers.Dense(CFG_L1[i], activation='relu'),   
+          tf.keras.layers.Dense(args.num_units_l1[i], activation='relu'),   
           # Shape => [batch, out_steps*features]
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
           # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
         ])
 
     models.append(model)
-    history = compile_and_fit(model, window, MAX_EPOCHS)
+    history = compile_and_fit(model, window, args.max_epochs)
     histories.append(history)
 
     ## Calling get_errors function
     val_performance, test_performance, \
-    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max, args.mb_size)
 
     # Storing MSE, MAE, RMSE val/test performance
     val_mse_errors.append(val_performance[0])
@@ -754,13 +763,13 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     
     # if show_plots:
     window.plot(model)
-    if len(CFG_L2) > 0:
-      plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    if len(args.num_units_l2) > 0:
+      plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.input_width, args.out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
-    if show_plots:
+      plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i]))
+    if args.if_show_plots:
       plt.show()
 
     model_loss_train = history.history['loss']
@@ -771,20 +780,20 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
-    if len(CFG_L2) > 0:
-      plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
+    if len(args.num_units_l2) > 0:
+      plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+      plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i]))
 
-    if show_plots:
+    if args.if_show_plots:
       plt.show()
     plt.close()
 
@@ -803,20 +812,21 @@ def fitMLP(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
 
-def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+def fitLSTM(args, window, train_min, train_max):
   '''
   Function to define and fit a Long Short-term Memory (LSTM) model.
   Parameters:
       window: the window for which the model was trained on, a WindowGenerator object
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
-      DROPOUT: dropout rate, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
-      show_plots: True to show the plots, a boolean
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      num_units_l2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      dropout_rate: dropout rate, a scalar
+      max_epochs: maximum epochs used to train the model, a scalar
+      if_show_plots: True to show the plots, a boolean
+      batchsize: number of samples in each mini batch, a integer
   Returns:
       saved figures regarding the window and the losses;
       models: a list of keras.Model objects
@@ -827,7 +837,7 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
       rmse_rt: rmse (reversescaled) val/test errors, a dictionary
   '''
   model_name = 'LSTM'
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, args.input_width, args.out_steps, args.path_for_common_dir)
 
   models = []
   histories = []
@@ -847,47 +857,47 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
   test_mae_errors_reversescaled = []
 
   # Storing the hyperparameters in a .txt file
-  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, DROPOUT, MAX_EPOCHS)
+  save_parameters(model_name, figures_dir, args.input_width, args.out_steps, args.mb_size, args.num_units_l1, args.num_units_l2, args.dropout_rate, args.max_epochs)
 
-  for i in range(len(CFG_L1)):
-    if len(CFG_L2) > 0:
-      print('##### {} MODEL WITH {} - {} UNITS'.format(model_name, CFG_L1[i], CFG_L2[i]))
+  for i in range(len(args.num_units_l1)):
+    if len(args.num_units_l2) > 0:
+      print('##### {} MODEL WITH {} - {} UNITS'.format(model_name, args.num_units_l1[i], args.num_units_l2[i]))
       model = tf.keras.Sequential([
           # Shape [batch, time, features] => [batch, lstm_units]
           # Adding more `lstm_units` just overfits more quickly.
-          tf.keras.layers.LSTM(CFG_L1[i], return_sequences=True),
+          tf.keras.layers.LSTM(args.num_units_l1[i], return_sequences=True),
           # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # second lstm layer
-          tf.keras.layers.LSTM(CFG_L2[i], return_sequences=False),
+          tf.keras.layers.LSTM(args.num_units_l2[i], return_sequences=False),
           # # # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # Shape => [batch, out_steps*features]
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
           # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
       ])
     else:
-      print('##### {} MODEL WITH {} UNITS'.format(model_name, CFG_L1[i]))
+      print('##### {} MODEL WITH {} UNITS'.format(model_name, args.num_units_l1[i]))
       model = tf.keras.Sequential([                         
           # Shape [batch, time, features] => [batch, lstm_units]
           # Adding more `lstm_units` just overfits more quickly.
-          tf.keras.layers.LSTM(CFG_L1[i], return_sequences=False),
+          tf.keras.layers.LSTM(args.num_units_l1[i], return_sequences=False),
           # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # Shape => [batch, out_steps*features]
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
-          # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
+          # Shape => [batch, aout_steps, features]
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
         ])
       
     models.append(model)
-    history = compile_and_fit(model, window, MAX_EPOCHS)
+    history = compile_and_fit(model, window, args.max_epochs)
     histories.append(history)
 
     ## Calling get_errors function
     val_performance, test_performance, \
-    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max, args.mb_size)
 
     # Storing MSE, MAE, RMSE val/test performance
     val_mse_errors.append(val_performance[0])
@@ -904,15 +914,15 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
     test_rmse_errors_reversescaled.append(test_performance_rt[2])
 
     
-    # if show_plots:
+  
     window.plot(model)
-    if len(CFG_L2) > 0:
-      plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    if len(args.num_units_l2) > 0:
+      plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.input_width, args.out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
-    if show_plots:
+      plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i]))
+    if args.if_show_plots:
       plt.show()
 
     model_loss_train = history.history['loss']
@@ -923,20 +933,20 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
-    if len(CFG_L2) > 0:
-      plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
+    if len(args.num_units_l2) > 0:
+      plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+      plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i]))
 
-    if show_plots:
+    if args.if_show_plots:
       plt.show()
     plt.close()
 
@@ -954,19 +964,20 @@ def fitLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s
 
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
-def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+def fitARLSTM(args, window, train_min, train_max):
   '''
   Function to define and fit an Autoregressive Long Short-term Memory (AR-LSTM) model.
   Parameters:
       window: the window for which the model was trained on, a WindowGenerator object
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      DROPOUT: dropout rate, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      dropout_rate: dropout rate, a scalar
+      max_epochs: maximum epochs used to train the model, a scalar
       show_plots: True to show the plots, a boolean
+      batchsize: number of samples in each mini batch, a integer
   Returns:
       saved figures regarding the window and the losses;
       models: a list of keras.Model objects
@@ -977,7 +988,7 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
       rmse_rt: rmse (reversescaled) val/test errors, a dictionary
   '''
   model_name = 'AR-LSTM'
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, args.input_width, args.out_steps, args.path_for_common_dir)
 
   models = []
   histories = []
@@ -997,19 +1008,18 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
   test_mae_errors_reversescaled = []
 
   # Storing the hyperparameters in a .txt file
-  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, 0, DROPOUT, MAX_EPOCHS)
+  save_parameters(model_name, figures_dir, args.input_width, args.out_steps, args.mb_size, args.num_units_l1, 0, 0, args.max_epochs)
 
-
-  for i in range(len(CFG_L1)):
-    print('##### {} MODEL WITH {} UNITS'.format(model_name, CFG_L1[i]))
-    model = FeedBack(units=CFG_L1[i], out_steps=OUT_STEPS)
+  for i in range(len(args.num_units_l1)):
+    print('##### {} MODEL WITH {} UNITS'.format(model_name, args.num_units_l1[i]))
+    model = FeedBack(units=args.num_units_l1[i], out_steps=args.out_steps)
     models.append(model)
-    history = compile_and_fit(model, window, MAX_EPOCHS)
+    history = compile_and_fit(model, window, args.max_epochs)
     histories.append(history)
 
     ## Calling get_errors function
     val_performance, test_performance, \
-    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max, args.mb_size)
 
     # Storing MSE, MAE, RMSE val/test performance
     val_mse_errors.append(val_performance[0])
@@ -1026,9 +1036,9 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     test_rmse_errors_reversescaled.append(test_performance_rt[2])
 
     window.plot(model)
-    plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
-    plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
-    if show_plots:
+    plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
+    plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i]))
+    if args.if_show_plots:
       plt.show()
 
     model_loss_train = history.history['loss']
@@ -1040,13 +1050,13 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
 
-    plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+    plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+    plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i]))
 
-    if show_plots:
+    if args.if_show_plots:
       plt.show()
     plt.close()
 
@@ -1064,20 +1074,21 @@ def fitARLSTM(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS
 
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
-def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+def fitGRU(args, window, train_min, train_max):
   '''
   Function to define and fit a Gated Recurrent Unit (GRU) model.
   Parameters:
       window: the window for which the model was trained on, a WindowGenerator object
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
-      DROPOUT: dropout rate, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      num_units_l2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      dropout_rate: dropout rate, a scalar
+      max_epochs: maximum epochs used to train the model, a scalar
       show_plots: True to show the plots, a boolean
+      batchsize: number of samples in each mini batch, a integer
   Returns:
       saved figures regarding the window and the losses;
       models: a list of keras.Model objects
@@ -1088,7 +1099,7 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
       rmse_rt: rmse (reversescaled) val/test errors, a dictionary
   '''
   model_name = 'GRU'
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, args.input_width, args.out_steps, args.path_for_common_dir)
   models = []
   histories = []
 
@@ -1107,47 +1118,47 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
   test_mae_errors_reversescaled = []
 
   # Storing the hyperparameters in a .txt file
-  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, DROPOUT, MAX_EPOCHS)
+  save_parameters(model_name, figures_dir, args.input_width, args.out_steps, args.mb_size, args.num_units_l1, args.num_units_l2, args.dropout_rate, args.max_epochs)
 
-  for i in range(len(CFG_L1)):
-    if len(CFG_L2) > 0:
-      print('##### {} MODEL WITH {} - {} UNITS'.format(model_name, CFG_L1[i], CFG_L2[i]))
+  for i in range(len(args.num_units_l1)):
+    if len(args.num_units_l2) > 0:
+      print('##### {} MODEL WITH {} - {} UNITS'.format(model_name, args.num_units_l1[i], args.num_units_l2[i]))
       model = tf.keras.Sequential([
           # Shape [batch, time, features] => [batch, gru_units]
           # Adding more `gru_units` just overfits more quickly.
-          tf.keras.layers.GRU(CFG_L1[i], return_sequences=True),
+          tf.keras.layers.GRU(args.num_units_l1[i], return_sequences=True),
           # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # second gru layer
-          tf.keras.layers.GRU(CFG_L2[i], return_sequences=False),
+          tf.keras.layers.GRU(args.num_units_l2[i], return_sequences=False),
           # # # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # Shape => [batch, out_steps*features]
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
           # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
       ])
     else:
-      print('##### {} MODEL WITH {} UNITS'.format(model_name, CFG_L1[i]))
+      print('##### {} MODEL WITH {} UNITS'.format(model_name, args.num_units_l1[i]))
       model = tf.keras.Sequential([                         
           # Shape [batch, time, features] => [batch, gru_units]
           # Adding more `gru_units` just overfits more quickly.
-          tf.keras.layers.GRU(CFG_L1[i], return_sequences=False),
+          tf.keras.layers.GRU(args.num_units_l1[i], return_sequences=False),
           # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # Shape => [batch, out_steps*features]
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
           # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
         ])
         
     models.append(model)
-    history = compile_and_fit(model, window, MAX_EPOCHS)
+    history = compile_and_fit(model, window, args.max_epochs)
     histories.append(history)
 
     ## Calling get_errors function
     val_performance, test_performance, \
-    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max, args.mb_size)
 
     # Storing MSE, MAE, RMSE val/test performance
     val_mse_errors.append(val_performance[0])
@@ -1166,13 +1177,13 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     
     # if show_plots:
     window.plot(model)
-    if len(CFG_L2) > 0:
-      plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    if len(args.num_units_l2) > 0:
+      plt.suptitle('Model: {} | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.input_width, args.out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
-    if show_plots:
+      plt.suptitle('Model: {} | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i]))
+    if args.if_show_plots:
       plt.show()
 
     model_loss_train = history.history['loss']
@@ -1183,20 +1194,20 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
-    if len(CFG_L2) > 0:
-      plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], INPUT_WIDTH, OUT_STEPS))
+    if len(args.num_units_l2) > 0:
+      plt.title('{} Model Loss | Hidden Units: {} - {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], INPUT_WIDTH, OUT_STEPS))
+      plt.title('{} Model Loss | Hidden Units: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i]))
 
-    if show_plots:
+    if args.if_show_plots:
       plt.show()
     plt.close()
 
@@ -1215,21 +1226,23 @@ def fitGRU(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
 
-def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS, CONV_WIDTH=s.CONV_WIDTH, CFG_L1=s.CFG_L1, CFG_L2=s.CFG_L2, DROPOUT=s.DROPOUT, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS):
+# def fitCNN(window, train_min, train_max, input_width, out_steps, conv_width, num_units_l1, num_units_l2, dropout_rate, max_epochs, show_plots, batchsize):
+def fitCNN(args, window, train_min, train_max):
   '''
   Function to define and fit a 1D Convolutional Neural Network (1DCNN) model.
   Parameters:
       window: the window for which the model was trained on, a WindowGenerator object
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CONV_WIDTH: kernel size, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
-      DROPOUT: dropout rate, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      conv_width: kernel size, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's layer 1, a list
+      num_units_l2: configs (e.g., hidden units, filters) for model's layer 2, a list
+      dropout_rate: dropout rate, a scalar
+      max_epochs: maximum epochs used to train the model, a scalar
       show_plots: True to show the plots, a boolean
+      batchsize: number of samples in each mini batch, a integer
   Returns:
       saved figures regarding the window and the losses;
       models: a list of keras.Model objects
@@ -1240,7 +1253,7 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
       rmse_rt: rmse (reversescaled) val/test errors, a dictionary
   '''
   model_name = '1DCNN'
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, args.input_width, args.out_steps, args.path_for_common_dir)
 
   models = []
   histories = []
@@ -1260,64 +1273,64 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
   test_mae_errors_reversescaled = []
 
   # Storing the hyperparameters in a .txt file
-  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2, DROPOUT, MAX_EPOCHS, CONV_WIDTH)
+  save_parameters(model_name, figures_dir, args.input_width, args.out_steps, args.mb_size, args.num_units_l1, args.num_units_l2, args.dropout_rate, args.max_epochs, args.conv_width)
 
-  for i in range(len(CFG_L1)):
-    if len(CFG_L2) > 0:
-      print('##### {} MODEL WITH {} - {} FILTERS | KERNEL SIZE: {}'.format(model_name, CFG_L1[i], CFG_L2[i], CONV_WIDTH))
+  for i in range(len(args.num_units_l1)):
+    if len(args.num_units_l2) > 0:
+      print('##### {} MODEL WITH {} - {} FILTERS | KERNEL SIZE: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.conv_width))
       model = tf.keras.Sequential([
-          # Shape [batch, time, features] => [batch, CONV_WIDTH, features]  
-          tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
+          # Shape [batch, time, features] => [batch, conv_width, features]  
+          tf.keras.layers.Lambda(lambda x: x[:, -args.conv_width:, :]),
           ######      Shape [batch, time, features] => [batch, INPUT_SIZE, features]
-          tf.keras.layers.Conv1D(filters=CFG_L1[i],
+          tf.keras.layers.Conv1D(filters=args.num_units_l1[i],
                                  activation='relu',
-                                 kernel_size=(CONV_WIDTH),
+                                 kernel_size=(args.conv_width),
                                  padding='same',
                                  strides=1),
           # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # second convolutional layer
-          tf.keras.layers.Conv1D(filters=CFG_L2[i],
+          tf.keras.layers.Conv1D(filters=args.num_units_l2[i],
                                  activation='relu',
-                                 kernel_size=(CONV_WIDTH),
+                                 kernel_size=(args.conv_width),
                                  padding='same',
                                  strides=1),
           # # # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # Flatten
           tf.keras.layers.Flatten(),
           # Shape => [batch, out_steps*features]
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
           # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
       ])
     else:
-      print('##### {} MODEL WITH {} FILTERS | KERNEL SIZE: {}'.format(model_name, CFG_L1[i], CONV_WIDTH))
+      print('##### {} MODEL WITH {} FILTERS | KERNEL SIZE: {}'.format(model_name, args.num_units_l1[i], args.conv_width))
       model = tf.keras.Sequential([                         
-          # Shape [batch, time, features] => [batch, CONV_WIDTH, features]  
-          tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
-          tf.keras.layers.Conv1D(filters=CFG_L1[i],
+          # Shape [batch, time, features] => [batch, conv_width, features]  
+          tf.keras.layers.Lambda(lambda x: x[:, -args.conv_width:, :]),
+          tf.keras.layers.Conv1D(filters=args.num_units_l1[i],
                                  activation='relu',
-                                 kernel_size=(CONV_WIDTH),
+                                 kernel_size=(args.conv_width),
                                  padding='same',
                                  strides=1),
           # Adding dropout to prent overfitting
-          tf.keras.layers.Dropout(DROPOUT),
+          tf.keras.layers.Dropout(args.dropout_rate),
           # Flatten
           tf.keras.layers.Flatten(),
           # Shape => [batch, out_steps*features]
-          tf.keras.layers.Dense(OUT_STEPS*window.get_num_features()),
+          tf.keras.layers.Dense(args.out_steps*window.get_num_features()),
           # Shape => [batch, out_steps, features]
-          tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()])
+          tf.keras.layers.Reshape([args.out_steps, window.get_num_features()])
         ])
 
     models.append(model)
-    history = compile_and_fit(model, window, MAX_EPOCHS)
+    history = compile_and_fit(model, window, args.max_epochs)
     histories.append(history)
 
     ## Calling get_errors function
     val_performance, test_performance, \
-    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max, args.mb_size)
 
     # Storing MSE, MAE, RMSE val/test performance
     val_mse_errors.append(val_performance[0])
@@ -1336,13 +1349,13 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     
     # if show_plots:
     window.plot(model)
-    if len(CFG_L2) > 0:
-      plt.suptitle('Model: {} | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+    if len(args.num_units_l2) > 0:
+      plt.suptitle('Model: {} | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], conv_width, input_width, out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.suptitle('Model: {} | # Filters: {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
-    if show_plots:
+      plt.suptitle('Model: {} | # Filters: {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.conv_width, args.input_width, args.out_steps))
+      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i]))
+    if args.if_show_plots:
       plt.show()
 
     model_loss_train = history.history['loss']
@@ -1353,20 +1366,20 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
-    if len(CFG_L2) > 0:
-      plt.title('{} Model Loss | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
+    if len(args.num_units_l2) > 0:
+      plt.title('{} Model Loss | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.num_units_l2[i], args.conv_width, args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i])+'_'+str(args.num_units_l2[i]))
     else:
-      plt.title('{} Model Loss | # Filters: {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
+      plt.title('{} Model Loss | # Filters: {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.conv_width, args.input_width, args.out_steps))
       plt.xlabel('Epochs')
       plt.ylabel('Loss')
       plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i]))
 
-    if show_plots:
+    if args.if_show_plots:
       plt.show()
     plt.close()
 
@@ -1385,24 +1398,23 @@ def fitCNN(window, train_min, train_max, INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.
   return models, histories, mae, rmse, mae_rt, rmse_rt
 
 
-def fitNBEATS(window, train_min, train_max, n_blocks, n_layers, b_sharing,\
-  INPUT_WIDTH=s.INPUT_WIDTH, OUT_STEPS=s.OUT_STEPS,\
-   CONV_WIDTH=s.CONV_WIDTH, MAX_EPOCHS=s.MAX_EPOCHS, show_plots=s.SHOW_PLOTS,\
-   CFG_L1=s.CFG_L1, CFG_L2=[]):
+# def fitNBEATS(window, train_min, train_max, input_width, out_steps, num_units_l1, n_blocks, n_layers, b_sharing, max_epochs, show_plots, batchsize):
+def fitNBEATS(args, window, train_min, train_max):
   '''
-  Function to define and fit a 1D Convolutional Neural Network (1DCNN) model.
+  Function to define and fit a generic architecture of N-BEATS model.
   Parameters:
       window: the window for which the model was trained on, a WindowGenerator object
       train_min: minimum value of the training set, a scalar
       train_max: maximum value of the training set, a scalar
-      INPUT_WIDTH: window's input, a scalar
-      OUT_STEPS: window's output, a scalar
-      CONV_WIDTH: kernel size, a scalar
-      CFG_L1: configs (e.g., hidden units, filters) for model's layer 1, a list
-      CFG_L2: configs (e.g., hidden units, filters) for model's layer 2, a list
-      DROPOUT: dropout rate, a scalar
-      MAX_EPOCHS: maximum epochs used to train the model, a scalar
+      input_width: window's input, a scalar
+      out_steps: window's output, a scalar
+      num_units_l1: configs (e.g., hidden units, filters) for model's block, a list
+      n_blocks: number of blocks for the generic architecture, a integer
+      n_layers: number of layers for each fully-connected network, a integer
+      b_sharing: True to share weights between the blocks, a boolean
+      max_epochs: maximum epochs used to train the model, a scalar
       show_plots: True to show the plots, a boolean
+      mb_size: number of samples in each mini batch, a integer
   Returns:
       saved figures regarding the window and the losses;
       models: a list of keras.Model objects
@@ -1413,7 +1425,7 @@ def fitNBEATS(window, train_min, train_max, n_blocks, n_layers, b_sharing,\
       rmse_rt: rmse (reversescaled) val/test errors, a dictionary
   '''
   model_name = 'N-BEATS'
-  figures_dir = create_directory(model_name, INPUT_WIDTH, OUT_STEPS)
+  figures_dir = create_directory(model_name, args.input_width, args.out_steps, args.path_for_common_dir)
 
   models = []
   histories = []
@@ -1431,26 +1443,25 @@ def fitNBEATS(window, train_min, train_max, n_blocks, n_layers, b_sharing,\
   test_mse_errors_reversescaled = []
   test_rmse_errors_reversescaled = [] 
   test_mae_errors_reversescaled = []
-                
+           
   # Storing the hyperparameters in a .txt file
-  save_parameters(model_name, figures_dir, INPUT_WIDTH, OUT_STEPS, CFG_L1, CFG_L2=0, \
-    DROPOUT=0, MAX_EPOCHS=MAX_EPOCHS, CONV_WIDTH=0, n_layers=n_layers, n_blocks=n_blocks, b_sharing=b_sharing)
+  save_parameters(model_name, figures_dir, args.input_width, args.out_steps, args.mb_size, args.num_units_l1, 0, 0, args.max_epochs, 0, args.n_layers, args.n_blocks, args.b_sharing)
 
-  for i in range(len(CFG_L1)):
-    print('##### {} MODEL WITH {} HIDDEN UNITS'.format(model_name, CFG_L1[i]))
+  for i in range(len(args.num_units_l1)):
+    print('##### {} MODEL WITH {} HIDDEN UNITS'.format(model_name, args.num_units_l1[i]))
     model = tf.keras.Sequential()
-    model.add(tf.keras.Input(shape=(INPUT_WIDTH,)))
-    nbeats = NBEATS(input_size=INPUT_WIDTH, output_size=OUT_STEPS, block_layers=n_layers, num_blocks=n_blocks, hidden_units=CFG_L1[i], block_sharing=b_sharing)
+    model.add(tf.keras.Input(shape=(args.input_width,)))
+    nbeats = NBEATS(input_size=args.input_width, output_size=args.out_steps, block_layers=args.n_layers, num_blocks=args.n_blocks, hidden_units=args.num_units_l1[i], block_sharing=args.b_sharing)
     model.add(nbeats)
-    model.add(tf.keras.layers.Reshape([OUT_STEPS, window.get_num_features()]))
+    model.add(tf.keras.layers.Reshape([args.out_steps, window.get_num_features()]))
     
     models.append(model)
-    history = compile_and_fit(model, window, MAX_EPOCHS)
+    history = compile_and_fit(model, window, args.max_epochs)
     histories.append(history)
 
     ## Calling get_errors function
     val_performance, test_performance, \
-    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max)
+    val_performance_rt, test_performance_rt = get_errors(model, window, model_name, train_min, train_max, args.mb_size)
 
     # Storing MSE, MAE, RMSE val/test performance
     val_mse_errors.append(val_performance[0])
@@ -1468,13 +1479,9 @@ def fitNBEATS(window, train_min, train_max, n_blocks, n_layers, b_sharing,\
 
     # if show_plots:
     window.plot(model)
-    if len(CFG_L2) > 0:
-      plt.suptitle('Model: {} | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
-    else:
-      plt.suptitle('Model: {} | # Hidden Units: {} | # Layers: {} | # Blocks: {} | Block Sharing? {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], n_layers, n_blocks, b_sharing, INPUT_WIDTH, OUT_STEPS))
-      plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(CFG_L1[i]))
-    if show_plots:
+    plt.suptitle('Model: {} | # Hidden Units: {} | # Layers: {} | # Blocks: {} | Block Sharing? {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.n_layers, args.n_blocks, args.b_sharing, args.input_width, args.out_steps))
+    plt.savefig(figures_dir+'/window_'+str(model_name)+'_'+str(args.num_units_l1[i]))
+    if args.if_show_plots:
       plt.show()
 
     model_loss_train = history.history['loss']
@@ -1485,20 +1492,13 @@ def fitNBEATS(window, train_min, train_max, n_blocks, n_layers, b_sharing,\
     plt.plot(model_epochs, model_loss_train, 'g', label='Training loss')
     plt.plot(model_epochs, model_loss_val, 'b', label='Validation loss')
 
-    if len(CFG_L2) > 0:
-      plt.title('{} Model Loss | # Filters: {} - {} | Kernel Size: {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], CFG_L2[i], CONV_WIDTH, INPUT_WIDTH, OUT_STEPS))
-      plt.xlabel('Epochs')
-      plt.ylabel('Loss')
-      plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i])+'_'+str(CFG_L2[i]))
-    else:
-      plt.title('{} Model Loss | # Hidden Units: {} | # Layers: {} | # Blocks: {} | Block Sharing? {} | Input: {} | Output: {}'.format(model_name, CFG_L1[i], n_layers, n_blocks, b_sharing, INPUT_WIDTH, OUT_STEPS))
-      plt.xlabel('Epochs')
-      plt.ylabel('Loss')
-      plt.legend()
-      plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(CFG_L1[i]))
+    plt.title('{} Model Loss | # Hidden Units: {} | # Layers: {} | # Blocks: {} | Block Sharing? {} | Input: {} | Output: {}'.format(model_name, args.num_units_l1[i], args.n_layers, args.n_blocks, args.b_sharing, args.input_width, args.out_steps))
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(figures_dir+"/losses_"+str(model_name)+'_'+str(args.num_units_l1[i]))
 
-    if show_plots:
+    if args.if_show_plots:
       plt.show()
     plt.close()
 
@@ -1517,4 +1517,5 @@ def fitNBEATS(window, train_min, train_max, n_blocks, n_layers, b_sharing,\
             'test':test_rmse_errors_reversescaled}
 
   return models, histories, mae, rmse, mae_rt, rmse_rt
+
 

@@ -14,7 +14,6 @@ import warnings
 from tensorflow import keras
 from keras.callbacks import History
 from sklearn.preprocessing import MinMaxScaler
-import settings as s
 
 # ## For ARIMA
 # import statsmodels.api as sm

@@ -14,9 +14,9 @@ from keras.callbacks import History
 from sklearn.preprocessing import MinMaxScaler 
 from sklearn.metrics import mean_absolute_error
 from WindowGenerator import WindowGenerator
-from AuxiliaryMethods import *
+from aux_funcs import normalize_data, plot_errors, min_max_inverse, get_report_dict
+from models_fit import fitLinearRegression, fitMLP, fitLSTM, fitARLSTM, fitGRU, fitCNN, fitNBEATS
 import random as python_random
-import settings as s
 import argparse
 import datetime
 import pdb
@@ -24,40 +24,50 @@ import pdb
 # np.random.seed(123)
 # python_random.seed(123)
 # tf.random.set_seed(123)
+# gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
 
-# # os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# #tf.config.experimental.set_memory_growth(gpus[0], True)
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if len(gpus) > 1:
+  tf.config.experimental.set_visible_devices(devices=gpus[0], device_type='GPU')
+  tf.config.experimental.set_memory_growth(gpus[0], True)
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 cont = 1
-## Hyperparameters parse
+
 def parse_args():
   parser = argparse.ArgumentParser(description='wireless_channel_forecasting')
 
+  # models I/O
   parser.add_argument("--input_width", help="specify input data width", type=int, default=25) 
   parser.add_argument("--out_steps", help="specify number of steps in the future to predict", type=int, default=50) 
   parser.add_argument("--shift", help="specify offset", type=int, default=None)
-  parser.add_argument('--mb_size', type=int, default=32, help='minibatch size')
-  parser.add_argument('--num_units_l1', type=list, default=[32], help='number of units in hidden layer 1')
+
+  # neural networks architecture hyperparameters
+  parser.add_argument('--num_units_l1', type=list, default=[256, 512, 1024], help='number of units in hidden layer 1')
   parser.add_argument('--num_units_l2', type=list, default=[], help='number of units in hidden layer 2')
   parser.add_argument('--conv_width', type=int, default=5, help='kernel size for convolutional layers')
-  parser.add_argument('--max_epochs', type=int, default=5, help='no. of epochs for training')
+  parser.add_argument('--max_epochs', type=int, default=2, help='no. of training epochs')
   parser.add_argument('--dropout_rate', type=float, default=.3, help='dropout rate (default 30%)')
-  parser.add_argument('--norm_type', type=int, default=2, help='normalization type (0 for standardization, 1 for centred mean and min = -1, 2 for minmax)')
-  parser.add_argument('--if_show_plots', dest='if_show_plots', action='store_true', default=False, help='True to show plots')
+  # n-beats architecture
   parser.add_argument('--n_layers', type=int, default=3, help='number of layers for each fully-connected network (N-BEATS)')
-  parser.add_argument('--n_blocks', type=int, default=3, help='number of blocks for the generic architecture (N-BEATS)')
-  parser.add_argument('--b_sharing', dest='b_sharing', action='store_false', default=True, help='True to share weights between the blocks (N-BEATS)')
-  parser.add_argument('--n_trials', type=int, default=5, help='no. of trials')
+  parser.add_argument('--n_blocks', type=int, default=5, help='number of blocks for the generic architecture (N-BEATS)')
+  parser.add_argument('--b_sharing', dest='b_sharing', action='store_false', default=True,
+                       help='True to share weights between the blocks (N-BEATS)')
 
+  # config
+  parser.add_argument('--mb_size', type=int, default=32, help='minibatch size')
+  parser.add_argument('--norm_type', type=int, default=2, help='data normalization type (0 for standardization, \
+                                                                1 for centred mean and min = -1, 2 for minmax)')
+  parser.add_argument('--n_trials', type=int, default=3, help='no. of trials')
+  parser.add_argument('--if_show_plots', dest='if_show_plots', action='store_true', default=False, help='True to show plots')
 
-  parser.add_argument('--data_path', dest='data_path', type=str, default='fast_fading_dB_NLOS_Head_Indoor_downsampled100hz_n50.txt')
-  # parser.add_argument('--data_path', dest='data_path', type=str, default=None, help='raw dataset path')
-  parser.add_argument('--path_for_common_dir', type=str, dest='path_for_common_dir',
-                        default='/home/nidhisimmons/git/channel_prediction_2022/')
+  # paths
+  parser.add_argument('--data_path', dest='data_path', type=str, default='fast_fading_dB_NLOS_Head_Indoor_downsampled100hz_n50.txt',
+                       help='raw dataset path')
+  parser.add_argument('--path_for_common_dir', type=str, dest='path_for_common_dir', 
+                      default='/home/nidhisimmons/git/channel_prediction_2022/')
 
   args = parser.parse_args()
 
@@ -81,8 +91,9 @@ if __name__ == '__main__':
   print('Called with args:')
   print(args)
 
+  ######################################################################################################
   ############################################## DATA LOAD #############################################
-
+  ######################################################################################################
   df = pd.read_csv(args.data_path, header=None, delimiter=r"\s+")
   if df.shape[0] == 1:
     df = df.T
@@ -110,6 +121,8 @@ if __name__ == '__main__':
   # print('df shape', df.shape)
   num_features = df.shape[1]
   print('Number of features: ', num_features)
+  print('train_min', train_min)
+  print('train_max', train_max)
 
   ax = train_df.plot(figsize=(10,8))
   val_df.plot(ax=ax)
@@ -123,11 +136,16 @@ if __name__ == '__main__':
     plt.show()
   plt.close()
   
+
+  ######################################################################################################
   ######################################## DATA NORMALIZATION ##########################################
+  ######################################################################################################
   train_df, val_df, test_df = normalize_data(df, train_df, val_df, test_df, args.norm_type, args.if_show_plots)
 
 
+  ######################################################################################################
   ########################################### BUILDING WINDOW ##########################################
+  ######################################################################################################
   window = WindowGenerator(input_width=args.input_width,
                                  label_width=args.out_steps,
                                  shift=args.shift,
@@ -144,9 +162,9 @@ if __name__ == '__main__':
       plt.suptitle('Multi window plot with inputs and labels')
 
 
-  # ######################################################################################################    
-  # #################################### FIT LINEAR REGRESSION ###########################################
-  # ######################################################################################################
+  ######################################################################################################    
+  #################################### FIT LINEAR REGRESSION ###########################################
+  ######################################################################################################
 
   linear_models = linear_histories = [] # keras.sequential models and keras.history objects
   linear_mae = linear_rmse = linear_mae_rt = linear_rmse_rt = {} # errors dicts
@@ -159,21 +177,32 @@ if __name__ == '__main__':
   plot_errors(linear_mae, linear_rmse, linear_mae_rt, linear_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='LINEAR')
 
   # Store best test error for each trial and model
-  best_dense = best_dense_ind = []
-  best_lstm = best_lstm_ind = []
-  best_arlstm = best_arlstm_ind = []
-  best_gru = best_gru_ind = []
-  best_cnn = best_cnn_ind = []
-  best_nbeats = best_nbeats_ind = []
+  best_dense = []
+  best_dense_ind = []
+  best_lstm = []
+  best_lstm_ind = []
+  best_arlstm = []
+  best_arlstm_ind = []
+  best_gru = []
+  best_gru_ind = []
+  best_cnn = []
+  best_cnn_ind = []
+  best_nbeats = []
+  best_nbeats_ind = []
+
+  dense_mae_list = []
+  lstm_mae_list = []
+  arlstm_mae_list = []
+  gru_mae_list = []
+  cnn_mae_list = []
+  nbeats_mae_list = []
 
   for i in range(args.n_trials):
     print('Trial: ', cont)
-    
 
-
-    # ######################################################################################################    
-    # ############################################# FIT MLP ################################################
-    # ######################################################################################################
+    ######################################################################################################    
+    ############################################# FIT MLP ################################################
+    ######################################################################################################
 
     dense_models = dense_histories = [] # keras.sequential models and keras.history objects
     dense_mae = dense_rmse = dense_mae_rt = dense_rmse_rt = {} # errors dicts
@@ -183,12 +212,11 @@ if __name__ == '__main__':
     dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt = fitMLP(args, window, train_min, train_max)
 
     # Store best test MAE and index for a model
-    best_dense_i = np.argmin(dense_mae['test'])
-    best_dense_ind.append(best_dense_i)
-    best_dense_error = np.min(dense_mae['test'])
-    best_dense.append(best_dense_error)
+    best_dense_ind.append(np.argmin(dense_mae['val']))
+    best_dense.append(np.min(dense_mae['val']))
+    dense_mae_list.append(dense_mae)
 
-    ## plot and save (.txt) errors
+    # plot and save (.txt) errors
     plot_errors(dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='MLP')
 
     ######################################################################################################    
@@ -203,32 +231,31 @@ if __name__ == '__main__':
     lstm_mae, lstm_rmse, lstm_mae_rt, lstm_rmse_rt = fitLSTM(args, window, train_min, train_max)
 
     # Store best test MAE and index for a model
-    best_lstm_i = np.argmin(lstm_mae['test'])
-    best_lstm_ind.append(best_lstm_i)
-    best_lstm_error = np.min(lstm_mae['test'])
-    best_lstm.append(best_lstm_error)
-    ## plot and save (.txt) errors
+    best_lstm_ind.append(np.argmin(lstm_mae['val']))
+    best_lstm.append(np.min(lstm_mae['val']))
+    lstm_mae_list.append(lstm_mae)
+
+    # plot and save (.txt) errors
     plot_errors(lstm_mae, lstm_rmse, lstm_mae_rt, lstm_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='LSTM')
 
-    # # ######################################################################################################    
-    # # ########################################## FIT AR-LSTM ###############################################
-    # # ######################################################################################################
+    ######################################################################################################    
+    ########################################## FIT AR-LSTM ###############################################
+    ######################################################################################################
 
-    # arlstm_models = arlstm_histories = [] # keras.sequential models and keras.history objects
-    # arlstm_mae = arlstm_rmse = arlstm_mae_rt = arlstm_rmse_rt = {} # errors dicts
+    arlstm_models = arlstm_histories = [] # keras.sequential models and keras.history objects
+    arlstm_mae = arlstm_rmse = arlstm_mae_rt = arlstm_rmse_rt = {} # errors dicts
 
-    # # fit model and output errors
-    # arlstm_models, arlstm_histories, \
-    # arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt = fitARLSTM(args, window, train_min, train_max)
+    # fit model and output errors
+    arlstm_models, arlstm_histories, \
+    arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt = fitARLSTM(args, window, train_min, train_max)
 
-    # # Store best test MAE and index for a model
-    # best_arlstm_i = np.argmin(arlstm_mae['test'])
-    # best_arlstm_ind.append(best_arlstm_i)
-    # best_arlstm_error = np.min(arlstm_mae['test'])
-    # best_arlstm.append(best_arlstm_error)
+    # Store best test MAE and index for a model
+    best_arlstm_ind.append(np.argmin(arlstm_mae['val']))
+    best_arlstm.append(np.min(arlstm_mae['val']))
+    arlstm_mae_list.append(arlstm_mae)
 
-    # ## plot and save (.txt) errors
-    # plot_errors(arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='AR-LSTM')
+    # plot and save (.txt) errors
+    plot_errors(arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='AR-LSTM')
 
     # ######################################################################################################    
     # ############################################# FIT GRU ################################################
@@ -242,12 +269,11 @@ if __name__ == '__main__':
     gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt = fitGRU(args, window, train_min, train_max)
 
     # Store best test MAE and index for a model
-    best_gru_i = np.argmin(gru_mae['test'])
-    best_gru_ind.append(best_gru_i)
-    best_gru_error = np.min(gru_mae['test'])
-    best_gru.append(best_gru_error)
+    best_gru_ind.append(np.argmin(gru_mae['val']))
+    best_gru.append(np.min(gru_mae['val']))
+    gru_mae_list.append(gru_mae)
 
-    ## plot and save (.txt) errors
+    # plot and save (.txt) errors
     plot_errors(gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='GRU')
 
     # ######################################################################################################    
@@ -262,12 +288,11 @@ if __name__ == '__main__':
     cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt = fitCNN(args, window, train_min, train_max)
 
     # Store best test MAE and index for a model
-    best_cnn_i = np.argmin(cnn_mae['test'])
-    best_cnn_ind.append(best_cnn_i)
-    best_cnn_error = np.min(cnn_mae['test'])
-    best_cnn.append(best_cnn_error)
+    best_cnn_ind.append(np.argmin(cnn_mae['val']))
+    best_cnn.append(np.min(cnn_mae['val']))
+    cnn_mae_list.append(cnn_mae)
 
-    ## plot and save (.txt) errors
+    # plot and save (.txt) errors
     plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='1DCNN')
 
     #####################################################################################################    
@@ -282,69 +307,43 @@ if __name__ == '__main__':
     nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt = fitNBEATS(args, window, train_min, train_max)
 
     # Store best test MAE and index for a model
-    best_nbeats_i = np.argmin(nbeats_mae['test'])
-    best_nbeats_ind.append(best_nbeats_i)
-    best_nbeats_error = np.min(nbeats_mae['test'])
-    best_nbeats.append(best_nbeats_error)
+    best_nbeats_ind.append(np.argmin(nbeats_mae['val']))
+    best_nbeats.append(np.min(nbeats_mae['val']))
+    nbeats_mae_list.append(nbeats_mae)
 
-    # ## plot and save (.txt) errors
+    # plot and save (.txt) errors
     plot_errors(nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='N-BEATS')
 
     cont +=1 # Trials counter update
+    tf.keras.backend.clear_session()
+    # end trials loop
+
+  # tuple containing: best config index (1) and val MAE (2) for each trial, and val MAEs for all trials
+  dense_tuple = (best_dense_ind, best_dense, dense_mae_list)
+  lstm_tuple = (best_lstm_ind, best_lstm, lstm_mae_list)
+  arlstm_tuple = (best_arlstm_ind, best_arlstm, arlstm_mae_list)
+  gru_tuple = (best_gru_ind, best_gru, gru_mae_list)
+  cnn_tuple = (best_cnn_ind, best_cnn, cnn_mae_list)
+  nbeats_tuple = (best_nbeats_ind, best_nbeats, nbeats_mae_list)
+
+  # REPORT
+  report_dict = {}
 
   print('#'*20+' LINEAR '+'#'*20)
-  print(f'The MAE is {linear_mae}')
+  print(f'The mean val MAE is {linear_mae}')
+  report_dict['LINEAR'] = [np.nan, linear_mae['val'], np.nan, np.nan, np.nan]
 
-  print('#'*20+' DENSE '+'#'*20)
-  print(f'The mean MAE is {np.mean(best_dense)}')
-  print(f'The MAE std is {np.std(best_dense)}')
+  report_dict['DENSE'] = get_report_dict(dense_tuple, 'DENSE', args.n_trials)
+  report_dict['LSTM'] = get_report_dict(lstm_tuple, 'LSTM', args.n_trials)
+  report_dict['AR-LSTM'] = get_report_dict(arlstm_tuple, 'AR-LSTM', args.n_trials)
+  report_dict['GRU'] = get_report_dict(gru_tuple, 'GRU', args.n_trials)
+  report_dict['1DCNN'] = get_report_dict(cnn_tuple, '1DCNN', args.n_trials)
+  report_dict['N-BEATS'] = get_report_dict(nbeats_tuple, 'N-BEATS', args.n_trials)
 
-  print('#'*20+' LSTM '+'#'*20)
-  print(f'The mean MAE is {np.mean(best_lstm)}')
-  print(f'The MAE std is {np.std(best_lstm)}')
+  report_df = pd.DataFrame(report_dict, columns=[x for x in report_dict.keys()])
+  report_df.rename(index={0:'Best Config', 1:'Mean MAE across trials', 2:'MAE std across trials', 3:'LB mean', 4:'LB std'}, inplace=True)
 
-  # print('#'*20+' AR-LSTM '+'#'*20) 
-  # print(f'The mean MAE is {np.mean(best_arlstm)}')
-  # print(f'The MAE std is {np.std(best_arlstm)}')
-
-  print('#'*20+' GRU '+'#'*20) 
-  print(f'The mean MAE is {np.mean(best_gru)}')
-  print(f'The MAE std is {np.std(best_gru)}')
-
-  print('#'*20+' 1D-CNN '+'#'*20) 
-  print(f'The mean MAE is {np.mean(best_cnn)}')
-  print(f'The MAE std is {np.std(best_cnn)}')
-
-  print('#'*20+' N-BEATS '+'#'*20) 
-  print(f'The mean MAE is {np.mean(best_nbeats)}')
-  print(f'The MAE std is {np.std(best_nbeats)}')
-
-  pdb.set_trace()
-  # runs = 1
-  # best_test = []
-  # for i in range(runs):
-  #   nbeats_models = nbeats_histories = [] # keras.sequential models and keras.history objects
-  #   nbeats_mae = nbeats_rmse = nbeats_mae_rt = nbeats_rmse_rt = {} # errors dicts
-
-  #   # fit model and output errors
-  #   nbeats_models, nbeats_histories, \
-  #   nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt = fitNBEATS(window, train_min, train_max, n_blocks=3, n_layers=3, b_sharing=True)
-
-  #   best_nbeats_ind = np.argmin(nbeats_mae['test'])
-  #   best_nbeast_error = np.min(nbeats_mae['test'])
-  #   best_test.append(best_nbeast_error)
-  #   print('##'*10)
-  #   print(f'best config: {best_nbeats_ind}')
-  #   print(f'best error: {best_nbeast_error}')
-  #   print('##'*10)
-  #   ## plot and save (.txt) errors
-  #   plot_errors(nbeats_mae, nbeats_rmse, nbeats_mae_rt, nbeats_rmse_rt, model_name='N-BEATS')
-  #   tf.keras.backend.clear_session()
-
-
-  # print(f'The mean MAE is {np.mean(best_test)}')
-  # print(f'The MAE std is {np.std(best_test)}')
-
+  print(report_df.transpose())
 
   # # For H samples test:
   # samples = test_df[:-12].values.T

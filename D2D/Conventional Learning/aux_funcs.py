@@ -452,7 +452,7 @@ def create_directory(model_name, input_width, out_steps, figures_dir):
       model_name: the model's name (e.g., LSTM, GRU), a string
       input_width: window's input, a scalar
       out_steps: window's output, a scalar
-      figures_dir: the main defined directory, a string
+      figures_dir: models directory, a string
   Returns:
       a model subdirectory, a string
   '''

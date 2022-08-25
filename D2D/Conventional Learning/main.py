@@ -34,35 +34,35 @@ def parse_args():
 
   # models I/O
   parser.add_argument("--input_width", help="specify input data width", type=int, default=25) 
-  parser.add_argument("--out_steps", help="specify number of steps in the future to predict", type=int, default=50) 
+  parser.add_argument("--out_steps", help="specify no. of steps in the future to predict", type=int, default=50) 
   parser.add_argument("--shift", help="specify offset", type=int, default=None)
 
   # neural networks architecture hyperparameters
-  parser.add_argument('--num_units_l1', type=list, default=[32, 64, 128, 256, 512, 1024], help='number of units in hidden layer 1')
-  parser.add_argument('--num_units_l2', type=list, default=[], help='number of units in hidden layer 2')
+  parser.add_argument('--num_units_l1', type=list, default=[32, 64, 128, 256, 512, 1024], help='no. of units in hidden layer 1')
+  parser.add_argument('--num_units_l2', type=list, default=[], help='no. of units in hidden layer 2')
   parser.add_argument('--conv_width', type=int, default=5, help='kernel size for convolutional layers')
   parser.add_argument('--max_epochs', type=int, default=100, help='no. of training epochs')
-  parser.add_argument('--dropout_rate', type=float, default=.3, help='dropout rate (default 30%)')
+  parser.add_argument('--dropout_rate', type=float, default=0, help='dropout rate (default 30%)')
 
   # n-beats architecture
-  parser.add_argument('--n_layers', type=int, default=3, help='number of layers for each fully-connected network (N-BEATS)')
-  parser.add_argument('--n_blocks', type=int, default=3, help='number of blocks for the generic architecture (N-BEATS)')
+  parser.add_argument('--n_layers', type=int, default=3, help='no. of layers for each fully-connected network (N-BEATS)')
+  parser.add_argument('--n_blocks', type=int, default=3, help='no. of blocks for the generic architecture (N-BEATS)')
   parser.add_argument('--b_sharing', dest='b_sharing', action='store_false', default=True,
                        help='True to share weights between the blocks (N-BEATS)')
 
   # config
   parser.add_argument('--mb_size', type=int, default=32, help='minibatch size')
-  parser.add_argument('--norm_type', type=int, default=2, help='data normalization type (0 for standardization, \
+  parser.add_argument('--norm_type', type=int, default=0, help='data normalization type (0 for standardization, \
                                                                 1 for centred mean and min = -1, 2 for minmax)')
   parser.add_argument('--n_trials', type=int, default=10, help='no. of trials')
   parser.add_argument('--if_show_plots', dest='if_show_plots', action='store_true', default=False, help='True to show plots')
 
   # paths
-  parser.add_argument('--data_path', dest='data_path', type=str, default='fast_fading_dB_NLOS_Head_Indoor_downsampled100hz_n50.txt',
+  parser.add_argument('--data_path', dest='data_path', type=str, default='fast_fading_dB_1kHz_indoor_nlos.txt',
                        help='raw dataset path')
   parser.add_argument('--path_for_common_dir', type=str, dest='path_for_common_dir', 
-                      default='/content/drive/My Drive/d2d_forecasting/tests/')
-                      # default='/home/nidhisimmons/git/channel_prediction_2022/')
+                      # default='/content/drive/My Drive/d2d_forecasting/tests/')
+                      default='/home/nidhisimmons/git/channel_prediction_2022/')
 
   args = parser.parse_args()
 
@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
   ## plot and save (.txt) errors
   plot_errors(linear_mae, linear_rmse, linear_mae_rt, linear_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='LINEAR')
-
+  pdb.set_trace()
   # Store best test error for each trial and model
   best_dense = []
   best_dense_ind = []
@@ -203,100 +203,100 @@ if __name__ == '__main__':
   for i in range(args.n_trials):
     print('Trial: ', cont)
 
-    ######################################################################################################    
-    ############################################# FIT MLP ################################################
-    ######################################################################################################
-
-    dense_models = dense_histories = [] # keras.sequential models and keras.history objects
-    dense_mae = dense_rmse = dense_mae_rt = dense_rmse_rt = {} # errors dicts
-
-    # fit model and output errors
-    dense_models, dense_histories, \
-    dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt = fitMLP(args, window, train_min, train_max)
-
-    # Store best test MAE and index for a model
-    best_dense_ind.append(np.argmin(dense_mae['val']))
-    best_dense.append(np.min(dense_mae['val']))
-    dense_mae_list.append(dense_mae)
-
-    # plot and save (.txt) errors
-    plot_errors(dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='MLP')
-
-    ######################################################################################################    
-    ############################################# FIT LSTM ###############################################
-    ######################################################################################################
-
-    lstm_models = lstm_histories = [] # keras.sequential models and keras.history objects
-    lstm_mae = lstm_rmse = lstm_mae_rt = lstm_rmse_rt = {} # errors dicts
-
-    # fit model and output errors
-    lstm_models, lstm_histories, \
-    lstm_mae, lstm_rmse, lstm_mae_rt, lstm_rmse_rt = fitLSTM(args, window, train_min, train_max)
-
-    # Store best test MAE and index for a model
-    best_lstm_ind.append(np.argmin(lstm_mae['val']))
-    best_lstm.append(np.min(lstm_mae['val']))
-    lstm_mae_list.append(lstm_mae)
-
-    # plot and save (.txt) errors
-    plot_errors(lstm_mae, lstm_rmse, lstm_mae_rt, lstm_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='LSTM')
-
     # ######################################################################################################    
-    # ########################################## FIT AR-LSTM ###############################################
+    # ############################################# FIT MLP ################################################
     # ######################################################################################################
 
-    # arlstm_models = arlstm_histories = [] # keras.sequential models and keras.history objects
-    # arlstm_mae = arlstm_rmse = arlstm_mae_rt = arlstm_rmse_rt = {} # errors dicts
+    # dense_models = dense_histories = [] # keras.sequential models and keras.history objects
+    # dense_mae = dense_rmse = dense_mae_rt = dense_rmse_rt = {} # errors dicts
 
     # # fit model and output errors
-    # arlstm_models, arlstm_histories, \
-    # arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt = fitARLSTM(args, window, train_min, train_max)
+    # dense_models, dense_histories, \
+    # dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt = fitMLP(args, window, train_min, train_max)
 
     # # Store best test MAE and index for a model
-    # best_arlstm_ind.append(np.argmin(arlstm_mae['val']))
-    # best_arlstm.append(np.min(arlstm_mae['val']))
-    # arlstm_mae_list.append(arlstm_mae)
+    # best_dense_ind.append(np.argmin(dense_mae['val']))
+    # best_dense.append(np.min(dense_mae['val']))
+    # dense_mae_list.append(dense_mae)
 
     # # plot and save (.txt) errors
-    # plot_errors(arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='AR-LSTM')
+    # plot_errors(dense_mae, dense_rmse, dense_mae_rt, dense_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='MLP')
 
     # ######################################################################################################    
-    # ############################################# FIT GRU ################################################
+    # ############################################# FIT LSTM ###############################################
     # ######################################################################################################
 
-    gru_models = gru_histories = [] # keras.sequential models and keras.history objects
-    gru_mae = gru_rmse = gru_mae_rt = gru_rmse_rt = {} # errors dicts
+    # lstm_models = lstm_histories = [] # keras.sequential models and keras.history objects
+    # lstm_mae = lstm_rmse = lstm_mae_rt = lstm_rmse_rt = {} # errors dicts
 
-    # fit model and output errors
-    gru_models, gru_histories, \
-    gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt = fitGRU(args, window, train_min, train_max)
+    # # fit model and output errors
+    # lstm_models, lstm_histories, \
+    # lstm_mae, lstm_rmse, lstm_mae_rt, lstm_rmse_rt = fitLSTM(args, window, train_min, train_max)
 
-    # Store best test MAE and index for a model
-    best_gru_ind.append(np.argmin(gru_mae['val']))
-    best_gru.append(np.min(gru_mae['val']))
-    gru_mae_list.append(gru_mae)
+    # # Store best test MAE and index for a model
+    # best_lstm_ind.append(np.argmin(lstm_mae['val']))
+    # best_lstm.append(np.min(lstm_mae['val']))
+    # lstm_mae_list.append(lstm_mae)
 
-    # plot and save (.txt) errors
-    plot_errors(gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='GRU')
+    # # plot and save (.txt) errors
+    # plot_errors(lstm_mae, lstm_rmse, lstm_mae_rt, lstm_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='LSTM')
 
-    # ######################################################################################################    
-    # ############################################# FIT CNN ################################################
-    # ######################################################################################################
+    # # ######################################################################################################    
+    # # ########################################## FIT AR-LSTM ###############################################
+    # # ######################################################################################################
 
-    cnn_models = cnn_histories = [] # keras.sequential models and keras.history objects
-    cnn_mae = cnn_rmse = cnn_mae_rt = cnn_rmse_rt = {} # errors dicts
+    # # arlstm_models = arlstm_histories = [] # keras.sequential models and keras.history objects
+    # # arlstm_mae = arlstm_rmse = arlstm_mae_rt = arlstm_rmse_rt = {} # errors dicts
 
-    # fit model and output errors
-    cnn_models, cnn_histories, \
-    cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt = fitCNN(args, window, train_min, train_max)
+    # # # fit model and output errors
+    # # arlstm_models, arlstm_histories, \
+    # # arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt = fitARLSTM(args, window, train_min, train_max)
 
-    # Store best test MAE and index for a model
-    best_cnn_ind.append(np.argmin(cnn_mae['val']))
-    best_cnn.append(np.min(cnn_mae['val']))
-    cnn_mae_list.append(cnn_mae)
+    # # # Store best test MAE and index for a model
+    # # best_arlstm_ind.append(np.argmin(arlstm_mae['val']))
+    # # best_arlstm.append(np.min(arlstm_mae['val']))
+    # # arlstm_mae_list.append(arlstm_mae)
 
-    # plot and save (.txt) errors
-    plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='1DCNN')
+    # # # plot and save (.txt) errors
+    # # plot_errors(arlstm_mae, arlstm_rmse, arlstm_mae_rt, arlstm_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='AR-LSTM')
+
+    # # ######################################################################################################    
+    # # ############################################# FIT GRU ################################################
+    # # ######################################################################################################
+
+    # gru_models = gru_histories = [] # keras.sequential models and keras.history objects
+    # gru_mae = gru_rmse = gru_mae_rt = gru_rmse_rt = {} # errors dicts
+
+    # # fit model and output errors
+    # gru_models, gru_histories, \
+    # gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt = fitGRU(args, window, train_min, train_max)
+
+    # # Store best test MAE and index for a model
+    # best_gru_ind.append(np.argmin(gru_mae['val']))
+    # best_gru.append(np.min(gru_mae['val']))
+    # gru_mae_list.append(gru_mae)
+
+    # # plot and save (.txt) errors
+    # plot_errors(gru_mae, gru_rmse, gru_mae_rt, gru_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='GRU')
+
+    # # ######################################################################################################    
+    # # ############################################# FIT CNN ################################################
+    # # ######################################################################################################
+
+    # cnn_models = cnn_histories = [] # keras.sequential models and keras.history objects
+    # cnn_mae = cnn_rmse = cnn_mae_rt = cnn_rmse_rt = {} # errors dicts
+
+    # # fit model and output errors
+    # cnn_models, cnn_histories, \
+    # cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt = fitCNN(args, window, train_min, train_max)
+
+    # # Store best test MAE and index for a model
+    # best_cnn_ind.append(np.argmin(cnn_mae['val']))
+    # best_cnn.append(np.min(cnn_mae['val']))
+    # cnn_mae_list.append(cnn_mae)
+
+    # # plot and save (.txt) errors
+    # plot_errors(cnn_mae, cnn_rmse, cnn_mae_rt, cnn_rmse_rt, args.input_width, args.out_steps, args.num_units_l1, args.num_units_l2, args.path_for_common_dir, args.if_show_plots, model_name='1DCNN')
 
     #####################################################################################################    
     ######################################### FIT N-BEATS ###############################################
@@ -337,11 +337,11 @@ if __name__ == '__main__':
   print(f'The mean val MAE is {linear_result}')
   report_dict['LINEAR'] = [np.nan, linear_result, np.nan, np.nan, np.nan]
 
-  report_dict['DENSE'] = get_report_dict(dense_tuple, 'DENSE', args.n_trials)
-  report_dict['LSTM'] = get_report_dict(lstm_tuple, 'LSTM', args.n_trials)
-  # report_dict['AR-LSTM'] = get_report_dict(arlstm_tuple, 'AR-LSTM', args.n_trials)
-  report_dict['GRU'] = get_report_dict(gru_tuple, 'GRU', args.n_trials)
-  report_dict['1DCNN'] = get_report_dict(cnn_tuple, '1DCNN', args.n_trials)
+  # report_dict['DENSE'] = get_report_dict(dense_tuple, 'DENSE', args.n_trials)
+  # report_dict['LSTM'] = get_report_dict(lstm_tuple, 'LSTM', args.n_trials)
+  # # report_dict['AR-LSTM'] = get_report_dict(arlstm_tuple, 'AR-LSTM', args.n_trials)
+  # report_dict['GRU'] = get_report_dict(gru_tuple, 'GRU', args.n_trials)
+  # report_dict['1DCNN'] = get_report_dict(cnn_tuple, '1DCNN', args.n_trials)
   report_dict['N-BEATS'] = get_report_dict(nbeats_tuple, 'N-BEATS', args.n_trials)
 
   report_df = pd.DataFrame(report_dict, columns=[x for x in report_dict.keys()], dtype='float32')
@@ -351,6 +351,7 @@ if __name__ == '__main__':
 
   with open(args.path_for_common_dir+'/results_report.txt', 'a') as f:
       f.write('- FINAL RESULTS -\n')
+      f.write(f'args: {args}')
       dfAsString = report_df.transpose().to_string(header=True, index=True)
       f.write(dfAsString)
 

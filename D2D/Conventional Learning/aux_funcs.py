@@ -143,7 +143,7 @@ def min_max_inverse(data, train_min, train_max):
 
   return train_min[0] + (train_max[0] - train_min[0]) * (data + 1)/2
 
-def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", save_weights_only=False):
+def compile_and_fit(model, window, max_epochs, patience=3, file_name="models", save_weights_only=False):
   '''
   Function to compile and fit the keras model.
   Parameters:
@@ -152,7 +152,7 @@ def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", 
       max_epochs: the maximum epochs the model will be trained on, a scalar
       patience: number of epochs for patience for early stopping, a scalar
       file_name: the file name for saving purposes, a string
-      save_weights_only: Truetf.keras.backend.clear_session() to save only the weights inside file_name, a boolean
+      save_weights_only: True to save only the weights inside file_name, a boolean
   Returns:
       keras.History object containing training/validation losses for each epoch
   '''
@@ -162,9 +162,9 @@ def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", 
                                                     mode='min',
                                                     restore_best_weights=True)
 
-  reduceLrOnPlateau = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
-                                                           patience=5,
-                                                           verbose=0)
+  # reduceLrOnPlateau = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
+  #                                                          patience=5,
+  #                                                          verbose=0)
 
   model.compile(loss=tf.losses.MeanSquaredError(),
                 optimizer=tf.optimizers.Adam(),
@@ -174,7 +174,7 @@ def compile_and_fit(model, window, max_epochs, patience=10, file_name="models", 
   history = model.fit(window.train, epochs=max_epochs,
                       validation_data=window.val,
                       verbose = 0,
-                      callbacks=[early_stopping, reduceLrOnPlateau])
+                      callbacks=[early_stopping])
   # print(history.history)  
   # pdb.set_trace()
   # if save_weights_only:
